@@ -18,7 +18,7 @@ function App() {
 
   return (
     <div>
-      <Router>
+      <Router basename="/AI-R-D---Github-copilot">
         <Navbar />
         <Routes>
           <Route path="/" element={<Shop />} />
