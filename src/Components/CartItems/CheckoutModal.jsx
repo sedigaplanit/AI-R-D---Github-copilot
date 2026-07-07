@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import './CheckoutModal.css';
 import { saveOrder } from '../../utils/orderStorage';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../../Context/ToastContext';
 
 const generateOrderNumber = () => `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
 const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [step, setStep] = useState('form');
   const [orderNumber] = useState(generateOrderNumber);
   const [formData, setFormData] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
@@ -53,6 +55,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
       saveOrder({ id: orderNumber, date: new Date().toISOString(), items, total });
       setStep('success');
       onSuccess();
+      showToast('Payment successful! Thank you for your order.', 'success');
     }, 2000);
   };
 
