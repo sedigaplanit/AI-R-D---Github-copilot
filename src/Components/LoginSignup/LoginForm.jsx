@@ -2,12 +2,15 @@ import React, { useContext, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { AuthContext } from "../../Context/AuthContext";
-import { useNavigate } from "react-router-dom"; // to redirect
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../Context/ToastContext";
+import { findUser } from "../../utils/userStorage";
 import "./Css/LoginSignup.css";
 
 const LoginForm = () => {
   const { login } = useContext(AuthContext);
-  const navigate = useNavigate(); // to redirect to homepage
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [error, setError] = useState("");
 
   const formik = useFormik({
@@ -20,11 +23,11 @@ const LoginForm = () => {
       password: Yup.string().min(6, "Must be 6 characters or more").required("Required"),
     }),
     onSubmit: (values) => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (storedUser && storedUser.email === values.email && storedUser.password === values.password) {
-        login(storedUser); // Set user in context
-        alert("Login successful!");
-        navigate("/"); // Redirect to homepage after successful login
+      const user = findUser(values.email, values.password);
+      if (user) {
+        login(user);
+        showToast(`Welcome back, ${user.name}!`);
+        navigate("/");
       } else {
         setError("Invalid email or password!");
       }

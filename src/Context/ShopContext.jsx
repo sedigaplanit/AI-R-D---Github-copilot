@@ -62,6 +62,12 @@ const ShopContextProvider = (props) => {
         return totalItem;
     };
 
+    const clearCart = () => {
+        const empty = getDefaultCart();
+        setCartItems(empty);
+        localStorage.removeItem('cartItems');
+    };
+
     const contextValue = {
         getTotalCartItems,
         getTotalCartAmount,
@@ -69,7 +75,8 @@ const ShopContextProvider = (props) => {
         cartItems,
         addToCart,
         removeFromCart,
-        updateCartItemCount, // Added here
+        updateCartItemCount,
+        clearCart,
     };
 
     return (

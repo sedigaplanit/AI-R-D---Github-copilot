@@ -2,12 +2,15 @@ import React, { useContext } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { AuthContext } from "../../Context/AuthContext";
-import { useNavigate } from "react-router-dom"; // for redirection
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../Context/ToastContext";
+import { addUser, emailExists } from "../../utils/userStorage";
 import "./Css/LoginSignup.css";
 
 const SignupForm = () => {
   const { login } = useContext(AuthContext);
-  const navigate = useNavigate(); // to redirect to login page
+  const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const formik = useFormik({
     initialValues: {
@@ -21,16 +24,14 @@ const SignupForm = () => {
       password: Yup.string().min(6, "Must be 6 characters or more").required("Required"),
     }),
     onSubmit: (values) => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      if (storedUser && storedUser.email === values.email) {
-        alert("User already exists! Please log in.");
-      } else {
-        // Save the new user in localStorage and log them in
-        localStorage.setItem("user", JSON.stringify(values)); // Save to localStorage
-        login(values); // Call login to update context
-        alert("Signup successful!");
-        navigate("/"); // Redirect to homepage after successful signup
+      if (emailExists(values.email)) {
+        showToast("Account already exists. Please log in.", "error");
+        return;
       }
+      addUser({ name: values.name, email: values.email, password: values.password });
+      login(values);
+      showToast(`Welcome, ${values.name}! Account created.`);
+      navigate("/");
     },
   });
 

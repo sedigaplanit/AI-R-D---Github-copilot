@@ -1,10 +1,13 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import './CartItem.css';
 import { ShopContext } from '../../Context/ShopContext';
 import remove_icon from '../Assets/cart_cross_icon.png';
+import CheckoutModal from './CheckoutModal';
 
 const CartItems = () => {
     const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount } = useContext(ShopContext);
+    const [showCheckout, setShowCheckout] = useState(false);
+    const total = getTotalCartAmount();
 
     const handleAddQuantity = (id) => {
         updateCartItemCount(id, cartItems[id] + 1);
@@ -79,9 +82,16 @@ const CartItems = () => {
                             <h3>LKR {getTotalCartAmount()}</h3>
                         </div>
                     </div>
-                    <button>Proceed to Checkout</button>
+                    <button onClick={() => setShowCheckout(true)}>Proceed to Checkout</button>
                 </div>
             </div>
+            {showCheckout && (
+                <CheckoutModal
+                    total={total}
+                    onClose={() => setShowCheckout(false)}
+                    onSuccess={() => {}}
+                />
+            )}
         </div>
     );
 };

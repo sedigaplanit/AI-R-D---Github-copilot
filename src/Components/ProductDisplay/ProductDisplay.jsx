@@ -1,12 +1,22 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import "./ProductDisplay.css";
 import start_icon from "../Assets/star_icon.png";
 import star_dull_icon from "../Assets/star_dull_icon.png";
 import { ShopContext } from "../../Context/ShopContext";
+import { useToast } from "../../Context/ToastContext";
 
 const ProductDisplay = (props) => {
   const { product } = props;
   const { addToCart } = useContext(ShopContext);
+  const { showToast } = useToast();
+  const [added, setAdded] = useState(false);
+
+  const handleAddToCart = () => {
+    addToCart(product.id);
+    showToast(`"${product.name.slice(0, 30)}..." added to cart!`);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  };
 
   return (
     <div className="productdisplay">
@@ -58,11 +68,10 @@ const ProductDisplay = (props) => {
         </div>
 
         <button
-          onClick={() => {
-            addToCart(product.id);
-          }}
+          className={`add-to-cart-btn${added ? ' added' : ''}`}
+          onClick={handleAddToCart}
         >
-          Add to Cart
+          {added ? '✓ Added to Cart' : 'Add to Cart'}
         </button>
 
         <p className="productdisplay-right-category">

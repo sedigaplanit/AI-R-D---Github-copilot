@@ -120,6 +120,15 @@
     background: #e63a3a;
 }
 
+.add-to-cart-btn {
+    transition: background 0.3s ease, transform 0.1s ease !important;
+}
+
+.add-to-cart-btn.added {
+    background: #2e7d32 !important;
+    transform: scale(0.98);
+}
+
 .productdisplay-right-category {
     margin-top: 10px;
     text-transform: capitalize;
