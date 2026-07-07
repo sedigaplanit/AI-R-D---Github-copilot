@@ -10,10 +10,19 @@ const ProductDisplay = (props) => {
   const { addToCart } = useContext(ShopContext);
   const { showToast } = useToast();
   const [added, setAdded] = useState(false);
+  const [selectedSize, setSelectedSize] = useState(null);
+  const [quantity, setQuantity] = useState(1);
+  const [sizeError, setSizeError] = useState(false);
 
   const handleAddToCart = () => {
-    addToCart(product.id);
-    showToast(`"${product.name.slice(0, 30)}..." added to cart!`);
+    if (!selectedSize) {
+      setSizeError(true);
+      showToast('Please select a size first!', 'error');
+      return;
+    }
+    setSizeError(false);
+    addToCart(product.id, quantity);
+    showToast(`${quantity}× "${product.name.slice(0, 25)}..." added to cart!`);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -57,13 +66,26 @@ const ProductDisplay = (props) => {
         </div>
 
         <div className="productdisplay-right-size">
-          <h1>Select Size</h1>
+          <h1>Select Size {sizeError && <span className="size-required">— required</span>}</h1>
           <div className="productdisplay-right-sizes">
-            <div>S</div>
-            <div>M</div>
-            <div>L</div>
-            <div>XL</div>
-            <div>XXL</div>
+            {['S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+              <div
+                key={size}
+                className={`size-btn${selectedSize === size ? ' size-selected' : ''}${sizeError && !selectedSize ? ' size-error' : ''}`}
+                onClick={() => { setSelectedSize(size); setSizeError(false); }}
+              >
+                {size}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="productdisplay-right-quantity">
+          <h1>Quantity</h1>
+          <div className="quantity-controls">
+            <button className="qty-btn" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>−</button>
+            <span className="qty-value">{quantity}</span>
+            <button className="qty-btn" onClick={() => setQuantity((q) => q + 1)}>+</button>
           </div>
         </div>
 

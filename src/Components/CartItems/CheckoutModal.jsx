@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './CheckoutModal.css';
 import { saveOrder } from '../../utils/orderStorage';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,16 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
   const [orderNumber] = useState(generateOrderNumber);
   const [formData, setFormData] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (step === 'success') {
+      const timer = setTimeout(() => {
+        onClose();
+        navigate('/');
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [step, onClose, navigate]);
 
   const handleChange = (e) => {
     let { name, value } = e.target;
@@ -100,7 +110,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
             <h2>Payment Successful!</h2>
             <p className="checkout-order">Order <strong>{orderNumber}</strong></p>
             <p>Thank you for shopping with <strong>OneStyle</strong>!</p>
-            <p className="checkout-confirmation">A confirmation has been sent to your email.</p>
+            <p className="checkout-confirmation">Redirecting to home in a moment...</p>
             <button className="checkout-pay-btn" onClick={() => { onClose(); navigate('/'); }}>Continue Shopping</button>
           </div>
         )}

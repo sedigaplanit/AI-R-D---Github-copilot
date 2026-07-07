@@ -17,9 +17,9 @@ const ShopContextProvider = (props) => {
         return saved ? JSON.parse(saved) : getDefaultCart();
     });
 
-    const addToCart = (itemId) => {
+    const addToCart = (itemId, qty = 1) => {
         setCartItems((prev) => {
-            const updated = { ...prev, [itemId]: prev[itemId] + 1 };
+            const updated = { ...prev, [itemId]: prev[itemId] + qty };
             localStorage.setItem('cartItems', JSON.stringify(updated));
             return updated;
         });

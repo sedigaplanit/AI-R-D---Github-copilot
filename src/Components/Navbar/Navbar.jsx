@@ -9,12 +9,12 @@ import { AuthContext } from "../../Context/AuthContext";
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
   const [isMenuOpen, setIsMenuOpen] = useState(false); // State to toggle menu visibility
-  const { getTotalCartItems } = useContext(ShopContext);
+  const { getTotalCartItems, clearCart } = useContext(ShopContext);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Handle logout functionality
   const handleLogout = () => {
+    clearCart();
     logout();
     navigate("/");
   };
