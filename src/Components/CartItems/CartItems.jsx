@@ -99,7 +99,7 @@ const CartItems = () => {
                     onSuccess={() => {
                         clearCart();
                         saveCartForUser(user?.email); // persist empty cart under user's key
-                        setShowCheckout(false);
+                        // Do NOT close here — CheckoutModal's useEffect fires onClose()+navigate('/') after 2.5s
                     }}
                 />
             )}
