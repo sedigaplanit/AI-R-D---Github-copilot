@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import './CheckoutModal.css';
 import { saveOrder } from '../../utils/orderStorage';
+import { useNavigate } from 'react-router-dom';
 
 const generateOrderNumber = () => `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
 const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
+  const navigate = useNavigate();
   const [step, setStep] = useState('form');
   const [orderNumber] = useState(generateOrderNumber);
   const [formData, setFormData] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
@@ -99,7 +101,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
             <p className="checkout-order">Order <strong>{orderNumber}</strong></p>
             <p>Thank you for shopping with <strong>OneStyle</strong>!</p>
             <p className="checkout-confirmation">A confirmation has been sent to your email.</p>
-            <button className="checkout-pay-btn" onClick={onClose}>Continue Shopping</button>
+            <button className="checkout-pay-btn" onClick={() => { onClose(); navigate('/'); }}>Continue Shopping</button>
           </div>
         )}
 
