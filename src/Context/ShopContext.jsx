@@ -12,18 +12,33 @@ const getDefaultCart = () => {
 }
 
 const ShopContextProvider = (props) => {
-    const [cartItems, setCartItems] = useState(getDefaultCart());
+    const [cartItems, setCartItems] = useState(() => {
+        const saved = localStorage.getItem('cartItems');
+        return saved ? JSON.parse(saved) : getDefaultCart();
+    });
 
     const addToCart = (itemId) => {
-        setCartItems((prev) => ({ ...prev, [itemId]: prev[itemId] + 1 }));
+        setCartItems((prev) => {
+            const updated = { ...prev, [itemId]: prev[itemId] + 1 };
+            localStorage.setItem('cartItems', JSON.stringify(updated));
+            return updated;
+        });
     };
 
     const removeFromCart = (itemId) => {
-        setCartItems((prev) => ({ ...prev, [itemId]: prev[itemId] - 1 }));
+        setCartItems((prev) => {
+            const updated = { ...prev, [itemId]: Math.max(0, prev[itemId] - 1) };
+            localStorage.setItem('cartItems', JSON.stringify(updated));
+            return updated;
+        });
     };
 
     const updateCartItemCount = (itemId, count) => {
-        setCartItems((prev) => ({ ...prev, [itemId]: count }));
+        setCartItems((prev) => {
+            const updated = { ...prev, [itemId]: count };
+            localStorage.setItem('cartItems', JSON.stringify(updated));
+            return updated;
+        });
     };
 
     const getTotalCartAmount = () => {

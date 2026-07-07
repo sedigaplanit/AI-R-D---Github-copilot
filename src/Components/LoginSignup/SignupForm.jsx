@@ -29,7 +29,7 @@ const SignupForm = () => {
         localStorage.setItem("user", JSON.stringify(values)); // Save to localStorage
         login(values); // Call login to update context
         alert("Signup successful!");
-        navigate("/login"); // Redirect to login page after successful signup
+        navigate("/"); // Redirect to homepage after successful signup
       }
     },
   });
