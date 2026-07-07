@@ -9,12 +9,13 @@ import { AuthContext } from "../../Context/AuthContext";
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
   const [isMenuOpen, setIsMenuOpen] = useState(false); // State to toggle menu visibility
-  const { getTotalCartItems, clearCart } = useContext(ShopContext);
+  const { getTotalCartItems, saveCartForUser, loadCartForUser } = useContext(ShopContext);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    clearCart();
+    saveCartForUser(user?.email); // persist current cart under user's key
+    loadCartForUser(null);        // switch display to empty guest cart
     logout();
     navigate("/");
   };

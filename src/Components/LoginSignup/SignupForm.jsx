@@ -5,10 +5,12 @@ import { AuthContext } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../Context/ToastContext";
 import { addUser, emailExists } from "../../utils/userStorage";
+import { ShopContext } from "../../Context/ShopContext";
 import "./Css/LoginSignup.css";
 
 const SignupForm = () => {
   const { login } = useContext(AuthContext);
+  const { loadCartForUser } = useContext(ShopContext);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -30,6 +32,7 @@ const SignupForm = () => {
       }
       addUser({ name: values.name, email: values.email, password: values.password });
       login(values);
+      loadCartForUser(values.email); // new user starts with empty cart
       showToast(`Welcome, ${values.name}! Account created.`);
       navigate("/");
     },

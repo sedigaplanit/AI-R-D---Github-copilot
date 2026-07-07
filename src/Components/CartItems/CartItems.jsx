@@ -1,11 +1,13 @@
 import React, { useContext, useState } from 'react';
 import './CartItem.css';
 import { ShopContext } from '../../Context/ShopContext';
+import { AuthContext } from '../../Context/AuthContext';
 import remove_icon from '../Assets/cart_cross_icon.png';
 import CheckoutModal from './CheckoutModal';
 
 const CartItems = () => {
-    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart } = useContext(ShopContext);
+    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, saveCartForUser } = useContext(ShopContext);
+    const { user } = useContext(AuthContext);
     const [showCheckout, setShowCheckout] = useState(false);
     const total = getTotalCartAmount();
 
@@ -94,7 +96,11 @@ const CartItems = () => {
                     total={total}
                     items={orderItems}
                     onClose={() => setShowCheckout(false)}
-                    onSuccess={() => { clearCart(); setShowCheckout(false); }}
+                    onSuccess={() => {
+                        clearCart();
+                        saveCartForUser(user?.email); // persist empty cart under user's key
+                        setShowCheckout(false);
+                    }}
                 />
             )}
         </div>

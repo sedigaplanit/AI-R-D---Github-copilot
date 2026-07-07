@@ -5,10 +5,12 @@ import { AuthContext } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../Context/ToastContext";
 import { findUser } from "../../utils/userStorage";
+import { ShopContext } from "../../Context/ShopContext";
 import "./Css/LoginSignup.css";
 
 const LoginForm = () => {
   const { login } = useContext(AuthContext);
+  const { loadCartForUser } = useContext(ShopContext);
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [error, setError] = useState("");
@@ -26,6 +28,7 @@ const LoginForm = () => {
       const user = findUser(values.email, values.password);
       if (user) {
         login(user);
+        loadCartForUser(user.email); // restore this user's saved cart
         showToast(`Welcome back, ${user.name}!`);
         navigate("/");
       } else {

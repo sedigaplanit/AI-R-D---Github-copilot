@@ -68,6 +68,19 @@ const ShopContextProvider = (props) => {
         localStorage.removeItem('cartItems');
     };
 
+    const saveCartForUser = (email) => {
+        if (email) {
+            localStorage.setItem(`cart_${email}`, JSON.stringify(cartItems));
+        }
+    };
+
+    const loadCartForUser = (email) => {
+        const saved = email ? localStorage.getItem(`cart_${email}`) : null;
+        const cart = saved ? JSON.parse(saved) : getDefaultCart();
+        setCartItems(cart);
+        localStorage.setItem('cartItems', JSON.stringify(cart));
+    };
+
     const contextValue = {
         getTotalCartItems,
         getTotalCartAmount,
@@ -77,6 +90,8 @@ const ShopContextProvider = (props) => {
         removeFromCart,
         updateCartItemCount,
         clearCart,
+        saveCartForUser,
+        loadCartForUser,
     };
 
     return (
