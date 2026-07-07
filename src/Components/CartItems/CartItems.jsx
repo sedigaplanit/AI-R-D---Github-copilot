@@ -5,9 +5,13 @@ import remove_icon from '../Assets/cart_cross_icon.png';
 import CheckoutModal from './CheckoutModal';
 
 const CartItems = () => {
-    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount } = useContext(ShopContext);
+    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart } = useContext(ShopContext);
     const [showCheckout, setShowCheckout] = useState(false);
     const total = getTotalCartAmount();
+
+    const orderItems = all_product
+        .filter((p) => cartItems[p.id] > 0)
+        .map((p) => ({ id: p.id, name: p.name, image: p.image, price: p.new_price, quantity: cartItems[p.id] }));
 
     const handleAddQuantity = (id) => {
         updateCartItemCount(id, cartItems[id] + 1);
@@ -88,8 +92,9 @@ const CartItems = () => {
             {showCheckout && (
                 <CheckoutModal
                     total={total}
+                    items={orderItems}
                     onClose={() => setShowCheckout(false)}
-                    onSuccess={() => {}}
+                    onSuccess={() => { clearCart(); setShowCheckout(false); }}
                 />
             )}
         </div>

@@ -66,7 +66,12 @@ const Navbar = () => {
 
       <div className="nav-login-cart">
         {user ? (
-          <button onClick={handleLogout}>Logout</button>
+          <>
+            <Link to="/orders" style={{ textDecoration: 'none' }}>
+              <button>My Orders</button>
+            </Link>
+            <button onClick={handleLogout}>Logout</button>
+          </>
         ) : (
           <Link to="/login">
             <button>Login</button>

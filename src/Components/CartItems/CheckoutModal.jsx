@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import './CheckoutModal.css';
+import { saveOrder } from '../../utils/orderStorage';
 
 const generateOrderNumber = () => `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
 
-const CheckoutModal = ({ total, onClose, onSuccess }) => {
+const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
   const [step, setStep] = useState('form');
   const [orderNumber] = useState(generateOrderNumber);
   const [formData, setFormData] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
@@ -37,6 +38,7 @@ const CheckoutModal = ({ total, onClose, onSuccess }) => {
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setStep('processing');
     setTimeout(() => {
+      saveOrder({ id: orderNumber, date: new Date().toISOString(), items, total });
       setStep('success');
       onSuccess();
     }, 2000);
