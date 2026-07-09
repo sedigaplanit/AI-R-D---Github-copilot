@@ -4,13 +4,13 @@ import * as Yup from "yup";
 import { AuthContext } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../Context/ToastContext";
-import { findUser } from "../../utils/userStorage";
 import { ShopContext } from "../../Context/ShopContext";
+import api from "../../api/apiClient";
 import "./Css/LoginSignup.css";
 
 const LoginForm = () => {
   const { login } = useContext(AuthContext);
-  const { loadCartForUser } = useContext(ShopContext);
+  const { loadCartFromAPI } = useContext(ShopContext);
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [error, setError] = useState("");
@@ -24,15 +24,20 @@ const LoginForm = () => {
       email: Yup.string().email("Invalid email address").required("Required"),
       password: Yup.string().min(6, "Must be 6 characters or more").required("Required"),
     }),
-    onSubmit: (values) => {
-      const user = findUser(values.email, values.password);
-      if (user) {
-        login(user);
-        loadCartForUser(user.email); // restore this user's saved cart
-        showToast(`Welcome back, ${user.name}!`);
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const data = await api("/api/auth/login", {
+          method: "POST",
+          body: { email: values.email, password: values.password },
+        });
+        login(data.user);
+        await loadCartFromAPI();
+        showToast(`Welcome back, ${data.user.name}!`);
         navigate("/");
-      } else {
-        setError("Invalid email or password!");
+      } catch (err) {
+        setError(err.message || "Invalid email or password!");
+      } finally {
+        setSubmitting(false);
       }
     },
   });

@@ -1,10 +1,22 @@
-import React from 'react';
-import { getOrders } from '../utils/orderStorage';
+import React, { useState, useEffect } from 'react';
+import api from '../api/apiClient';
 import { Link } from 'react-router-dom';
 import './Css/OrderHistory.css';
 
 const OrderHistory = () => {
-  const orders = getOrders();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api('/api/orders')
+      .then((data) => setOrders(data.orders))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return <div className="orderhistory-empty"><p>Loading orders...</p></div>;
+  }
 
   if (orders.length === 0) {
     return (

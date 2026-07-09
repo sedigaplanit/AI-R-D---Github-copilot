@@ -1,0 +1,56 @@
+// Creates all tables if they don't exist yet.
+// Called once at server startup — safe to run on every deploy.
+const pool = require('./db');
+
+async function initDb() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id            SERIAL PRIMARY KEY,
+        name          VARCHAR(100) NOT NULL,
+        email         VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS cart (
+        id         SERIAL PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL,
+        quantity   INTEGER NOT NULL DEFAULT 1,
+        UNIQUE (user_id, product_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id           SERIAL PRIMARY KEY,
+        order_number VARCHAR(20) NOT NULL UNIQUE,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        total        DECIMAL(10,2) NOT NULL,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS order_items (
+        id            SERIAL PRIMARY KEY,
+        order_id      INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id    INTEGER NOT NULL,
+        product_name  VARCHAR(255) NOT NULL,
+        product_image VARCHAR(500) DEFAULT '',
+        price         DECIMAL(10,2) NOT NULL,
+        quantity      INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid"    VARCHAR NOT NULL PRIMARY KEY,
+        "sess"   JSON NOT NULL,
+        "expire" TIMESTAMP(6) NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+    console.log('Database tables ready.');
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = initDb;

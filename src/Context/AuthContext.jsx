@@ -1,34 +1,30 @@
 import React, { createContext, useState, useEffect } from "react";
+import api from "../api/apiClient";
 
 // Create Context
 const AuthContext = createContext();
 
 // AuthProvider Component
 const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // Holds the authenticated user
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true); // true while checking session on mount
 
-  // Load user from localStorage on app start
+  // Restore session from the server cookie on every app load
   useEffect(() => {
-    const storedUser = JSON.parse(localStorage.getItem("user"));
-    if (storedUser) {
-      setUser(storedUser);
-    }
+    api("/api/auth/me")
+      .then((data) => setUser(data.user))
+      .catch(() => setUser(null))
+      .finally(() => setAuthLoading(false));
   }, []);
 
-  // Login function
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
-  };
+  // Called after a successful API login/signup with the returned user object
+  const login = (userData) => setUser(userData);
 
-  // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-  };
+  // Called after a successful API logout
+  const logout = () => setUser(null);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, authLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

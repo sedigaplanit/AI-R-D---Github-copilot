@@ -1,0 +1,26 @@
+# Render deployment config
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: onestyle-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: onestyle-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true          # Render auto-generates a secure random value
+      - key: CLIENT_URL
+        value: https://sedigaplanit.github.io
+
+databases:
+  - name: onestyle-db
+    databaseName: onestyle_db
+    plan: free

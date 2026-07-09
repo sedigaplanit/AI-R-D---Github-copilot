@@ -4,13 +4,13 @@ import * as Yup from "yup";
 import { AuthContext } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../Context/ToastContext";
-import { addUser, emailExists } from "../../utils/userStorage";
 import { ShopContext } from "../../Context/ShopContext";
+import api from "../../api/apiClient";
 import "./Css/LoginSignup.css";
 
 const SignupForm = () => {
   const { login } = useContext(AuthContext);
-  const { loadCartForUser } = useContext(ShopContext);
+  const { clearCart } = useContext(ShopContext);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -25,16 +25,21 @@ const SignupForm = () => {
       email: Yup.string().email("Invalid email address").required("Required"),
       password: Yup.string().min(6, "Must be 6 characters or more").required("Required"),
     }),
-    onSubmit: (values) => {
-      if (emailExists(values.email)) {
-        showToast("Account already exists. Please log in.", "error");
-        return;
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const data = await api("/api/auth/signup", {
+          method: "POST",
+          body: { name: values.name, email: values.email, password: values.password },
+        });
+        login(data.user);
+        clearCart(); // new user starts with an empty cart
+        showToast(`Welcome, ${data.user.name}! Account created.`);
+        navigate("/");
+      } catch (err) {
+        showToast(err.message || "Signup failed. Try again.", "error");
+      } finally {
+        setSubmitting(false);
       }
-      addUser({ name: values.name, email: values.email, password: values.password });
-      login(values);
-      loadCartForUser(values.email); // new user starts with empty cart
-      showToast(`Welcome, ${values.name}! Account created.`);
-      navigate("/");
     },
   });
 

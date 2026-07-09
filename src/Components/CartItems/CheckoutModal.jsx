@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './CheckoutModal.css';
-import { saveOrder } from '../../utils/orderStorage';
+import api from '../../api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../Context/ToastContext';
 
@@ -51,8 +51,15 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
     const errs = validate();
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setStep('processing');
-    setTimeout(() => {
-      saveOrder({ id: orderNumber, date: new Date().toISOString(), items, total });
+    setTimeout(async () => {
+      try {
+        await api('/api/orders', {
+          method: 'POST',
+          body: { id: orderNumber, date: new Date().toISOString(), items, total },
+        });
+      } catch (err) {
+        console.error('Failed to save order:', err.message);
+      }
       setStep('success');
       onSuccess();
       showToast('Payment successful! Thank you for your order.', 'success');

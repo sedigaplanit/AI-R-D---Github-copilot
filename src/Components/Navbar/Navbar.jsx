@@ -5,17 +5,19 @@ import cart_icon from "../Assets/cart_icon.png";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../../Context/ShopContext";
 import { AuthContext } from "../../Context/AuthContext";
+import api from "../../api/apiClient";
 
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // State to toggle menu visibility
-  const { getTotalCartItems, saveCartForUser, loadCartForUser } = useContext(ShopContext);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { getTotalCartItems, saveCartToAPI, clearCart } = useContext(ShopContext);
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    saveCartForUser(user?.email); // persist current cart under user's key
-    loadCartForUser(null);        // switch display to empty guest cart
+  const handleLogout = async () => {
+    await saveCartToAPI(); // persist cart to server before logging out
+    try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+    clearCart();
     logout();
     navigate("/");
   };

@@ -1,5 +1,6 @@
 import React, { createContext, useState } from "react";
-import all_product from '../Components/Assets/all_product'
+import all_product from '../Components/Assets/all_product';
+import api from '../api/apiClient';
 
 export const ShopContext = createContext(null);
 
@@ -68,17 +69,34 @@ const ShopContextProvider = (props) => {
         localStorage.removeItem('cartItems');
     };
 
-    const saveCartForUser = (email) => {
-        if (email) {
-            localStorage.setItem(`cart_${email}`, JSON.stringify(cartItems));
+    // Load the logged-in user's cart from the API and set it as the active cart
+    const loadCartFromAPI = async () => {
+        try {
+            const data = await api('/api/cart');
+            const cart = { ...getDefaultCart(), ...data.cartItems };
+            setCartItems(cart);
+            localStorage.setItem('cartItems', JSON.stringify(cart));
+        } catch {
+            // Not logged in or network error — leave cart as-is
         }
     };
 
-    const loadCartForUser = (email) => {
-        const saved = email ? localStorage.getItem(`cart_${email}`) : null;
-        const cart = saved ? JSON.parse(saved) : getDefaultCart();
-        setCartItems(cart);
-        localStorage.setItem('cartItems', JSON.stringify(cart));
+    // Push the current local cart to the API (used on logout / checkout)
+    const saveCartToAPI = async () => {
+        try {
+            await api('/api/cart', { method: 'PUT', body: { cartItems } });
+        } catch {
+            // ignore
+        }
+    };
+
+    // Clear the server-side cart (used after checkout)
+    const clearCartOnAPI = async () => {
+        try {
+            await api('/api/cart', { method: 'DELETE' });
+        } catch {
+            // ignore
+        }
     };
 
     const contextValue = {
@@ -90,8 +108,9 @@ const ShopContextProvider = (props) => {
         removeFromCart,
         updateCartItemCount,
         clearCart,
-        saveCartForUser,
-        loadCartForUser,
+        loadCartFromAPI,
+        saveCartToAPI,
+        clearCartOnAPI,
     };
 
     return (

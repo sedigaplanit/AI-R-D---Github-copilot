@@ -1,13 +1,11 @@
 import React, { useContext, useState } from 'react';
 import './CartItem.css';
 import { ShopContext } from '../../Context/ShopContext';
-import { AuthContext } from '../../Context/AuthContext';
 import remove_icon from '../Assets/cart_cross_icon.png';
 import CheckoutModal from './CheckoutModal';
 
 const CartItems = () => {
-    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, saveCartForUser } = useContext(ShopContext);
-    const { user } = useContext(AuthContext);
+    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI } = useContext(ShopContext);
     const [showCheckout, setShowCheckout] = useState(false);
     const total = getTotalCartAmount();
 
@@ -96,9 +94,9 @@ const CartItems = () => {
                     total={total}
                     items={orderItems}
                     onClose={() => setShowCheckout(false)}
-                    onSuccess={() => {
-                        clearCart();
-                        saveCartForUser(user?.email); // persist empty cart under user's key
+                    onSuccess={async () => {
+                        clearCart();           // clear local state
+                        await clearCartOnAPI(); // clear server-side cart
                         // Do NOT close here — CheckoutModal's useEffect fires onClose()+navigate('/') after 2.5s
                     }}
                 />
