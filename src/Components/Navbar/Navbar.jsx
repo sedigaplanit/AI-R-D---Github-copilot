@@ -5,7 +5,6 @@ import cart_icon from "../Assets/cart_icon.png";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../../Context/ShopContext";
 import { AuthContext } from "../../Context/AuthContext";
-import api from "../../api/apiClient";
 
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
@@ -16,9 +15,8 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await saveCartToAPI(); // persist cart to server before logging out
-    try { await api("/api/auth/logout", { method: "POST" }); } catch {}
     clearCart();
-    logout();
+    logout();             // clears user + jwt_token from localStorage
     navigate("/");
   };
 

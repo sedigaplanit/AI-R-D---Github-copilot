@@ -1,6 +1,15 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const requireAuth = require('../middleware/requireAuth');
+
+const sign = (user) =>
+  jwt.sign(
+    { id: user.id, name: user.name, email: user.email },
+    process.env.JWT_SECRET || 'dev_jwt_secret',
+    { expiresIn: '7d' }
+  );
 
 // ── POST /api/auth/signup ──────────────────────────────────────────────────────
 router.post('/signup', async (req, res) => {
@@ -20,8 +29,7 @@ router.post('/signup', async (req, res) => {
     );
 
     const user = { id: rows[0].id, name, email };
-    req.session.user = user;
-    res.status(201).json({ user });
+    res.status(201).json({ user, token: sign(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
@@ -45,8 +53,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
 
     const user = { id: dbUser.id, name: dbUser.name, email: dbUser.email };
-    req.session.user = user;
-    res.json({ user });
+    res.json({ user, token: sign(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
@@ -54,18 +61,10 @@ router.post('/login', async (req, res) => {
 });
 
 // ── POST /api/auth/logout ──────────────────────────────────────────────────────
-router.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) return res.status(500).json({ message: 'Logout failed.' });
-    res.clearCookie('connect.sid');
-    res.json({ message: 'Logged out.' });
-  });
-});
+// JWT is stateless — client just discards the token. Nothing to do server-side.
+router.post('/logout', (_req, res) => res.json({ message: 'Logged out.' }));
 
 // ── GET /api/auth/me ───────────────────────────────────────────────────────────
-router.get('/me', (req, res) => {
-  if (!req.session.user) return res.status(401).json({ user: null });
-  res.json({ user: req.session.user });
-});
+router.get('/me', requireAuth, (req, res) => res.json({ user: req.user }));
 
 module.exports = router;

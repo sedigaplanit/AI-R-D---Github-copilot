@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(
       'SELECT product_id, quantity FROM cart WHERE user_id = $1',
-      [req.session.user.id]
+      [req.user.id]
     );
     const cartItems = {};
     rows.forEach((r) => { cartItems[r.product_id] = r.quantity; });
@@ -26,7 +26,7 @@ router.put('/', async (req, res) => {
   if (!cartItems || typeof cartItems !== 'object')
     return res.status(400).json({ message: 'cartItems object required.' });
 
-  const userId = req.session.user.id;
+  const userId = req.user.id;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -56,7 +56,7 @@ router.put('/', async (req, res) => {
 // ── DELETE /api/cart ───────────────────────────────────────────────────────────
 router.delete('/', async (req, res) => {
   try {
-    await pool.query('DELETE FROM cart WHERE user_id = $1', [req.session.user.id]);
+    await pool.query('DELETE FROM cart WHERE user_id = $1', [req.user.id]);
     res.json({ message: 'Cart cleared.' });
   } catch (err) {
     console.error(err);

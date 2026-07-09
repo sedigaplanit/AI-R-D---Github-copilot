@@ -1,9 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
 const cors = require('cors');
-const pool = require('./db');
 const initDb = require('./initDb');
 
 const authRouter = require('./routes/auth');
@@ -33,22 +30,6 @@ app.use(
 
 // ── Body parsing ───────────────────────────────────────────────────────────────
 app.use(express.json());
-
-// ── Sessions (stored in PostgreSQL) ───────────────────────────────────────────
-app.use(
-  session({
-    store: new pgSession({ pool, tableName: 'session' }),
-    secret: process.env.SESSION_SECRET || 'dev_secret_change_me',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    },
-  })
-);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);

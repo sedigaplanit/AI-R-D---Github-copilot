@@ -31,7 +31,7 @@ const SignupForm = () => {
           method: "POST",
           body: { name: values.name, email: values.email, password: values.password },
         });
-        login(data.user);
+        login(data.user, data.token);
         clearCart(); // new user starts with an empty cart
         showToast(`Welcome, ${data.user.name}! Account created.`);
         navigate("/");

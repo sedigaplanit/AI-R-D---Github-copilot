@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   try {
     const { rows: orders } = await pool.query(
       'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.session.user.id]
+      [req.user.id]
     );
 
     const result = await Promise.all(
@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
 
     const { rows } = await client.query(
       'INSERT INTO orders (order_number, user_id, total, created_at) VALUES ($1, $2, $3, $4) RETURNING id',
-      [orderNumber, req.session.user.id, total, date || new Date()]
+      [orderNumber, req.user.id, total, date || new Date()]
     );
     const orderId = rows[0].id;
 

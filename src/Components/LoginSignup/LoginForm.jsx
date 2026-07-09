@@ -30,7 +30,7 @@ const LoginForm = () => {
           method: "POST",
           body: { email: values.email, password: values.password },
         });
-        login(data.user);
+        login(data.user, data.token);
         await loadCartFromAPI();
         showToast(`Welcome back, ${data.user.name}!`);
         navigate("/");

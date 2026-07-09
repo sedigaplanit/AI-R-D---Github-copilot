@@ -16,7 +16,7 @@ services:
         fromDatabase:
           name: onestyle-db
           property: connectionString
-      - key: SESSION_SECRET
+      - key: JWT_SECRET
         generateValue: true
       - key: CLIENT_URL
         value: https://sedigaplanit.github.io
