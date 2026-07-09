@@ -1,11 +1,6 @@
 const CSV_KEY = 'users_db';
 const HEADER = 'name,email,password';
 
-// Default user seeded for automation testing — always present regardless of localStorage state
-const DEFAULT_USERS = [
-  { name: 'Test User', email: 'test@test.com', password: 'Test@123' },
-];
-
 const parseCSV = (csv) => {
   const lines = csv.trim().split('\n').filter(Boolean);
   if (lines.length <= 1) return [];
@@ -26,11 +21,7 @@ const serializeCSV = (users) => {
 
 export const getUsers = () => {
   const csv = localStorage.getItem(CSV_KEY);
-  const stored = csv ? parseCSV(csv) : [];
-  // Merge default users (prepend), skipping any that were already stored under the same email
-  const storedEmails = new Set(stored.map((u) => u.email));
-  const defaults = DEFAULT_USERS.filter((u) => !storedEmails.has(u.email));
-  return [...defaults, ...stored];
+  return csv ? parseCSV(csv) : [];
 };
 
 export const addUser = ({ name, email, password }) => {
