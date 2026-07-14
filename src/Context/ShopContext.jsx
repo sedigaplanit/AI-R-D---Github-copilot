@@ -19,8 +19,17 @@ const ShopContextProvider = (props) => {
     });
 
     const [selectedSizes, setSelectedSizes] = useState(() => {
-        const saved = localStorage.getItem('selectedSizes');
-        return saved ? JSON.parse(saved) : {};
+        const savedSizes = localStorage.getItem('selectedSizes');
+        const savedCart  = localStorage.getItem('cartItems');
+        if (!savedSizes) return {};
+        const sizes = JSON.parse(savedSizes);
+        const cart  = savedCart ? JSON.parse(savedCart) : {};
+        // Only restore sizes for products that are actually in the cart
+        const filtered = {};
+        Object.keys(sizes).forEach((id) => {
+            if (cart[id] > 0) filtered[id] = sizes[id];
+        });
+        return filtered;
     });
 
     const setProductSize = (itemId, size) => {
