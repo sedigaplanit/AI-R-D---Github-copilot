@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Hero.css';
 import free_shipping from '../Assets/free_shipping.png';
@@ -6,9 +6,11 @@ import easy_return from '../Assets/easy_return.png';
 import secure_payments from '../Assets/secure_payment.png';
 import arrow_icon from '../Assets/arrow.png';
 import hero_image from '../Assets/hero_image_2.png';
+import { AuthContext } from '../../Context/AuthContext';
 
 const Hero = () => {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
   const handleShopNow = () => {
     navigate('/womens');
@@ -28,9 +30,11 @@ const Hero = () => {
           <button className="cta-primary" onClick={handleShopNow}>
             Shop Now
           </button>
-          <button className="cta-signup" onClick={handleSignUp}>
-            Sign Up
-          </button>
+          {!user && (
+            <button className="cta-signup" onClick={handleSignUp}>
+              Sign Up
+            </button>
+          )}
           <button className="cta-secondary">
             Learn More <img src={arrow_icon} alt="arrow icon" />
           </button>

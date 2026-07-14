@@ -65,7 +65,20 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (_req, res) => res.json({ message: 'Logged out.' }));
 
 // ── GET /api/auth/me ───────────────────────────────────────────────────────────
-router.get('/me', requireAuth, (req, res) => res.json({ user: req.user }));
+// Always query the DB so stale JWTs still return fresh profile fields
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, email, gender, mobile, address FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
+    res.json({ user: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+});
 
 // ── PUT /api/auth/profile ──────────────────────────────────────────────────────
 router.put('/profile', requireAuth, async (req, res) => {

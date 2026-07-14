@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../Context/AuthContext';
 import { useToast } from '../Context/ToastContext';
 import api from '../api/apiClient';
@@ -7,6 +7,7 @@ import './Css/Profile.css';
 const Profile = () => {
   const { user, updateUser } = useContext(AuthContext);
   const { showToast } = useToast();
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name:    user?.name    || '',
     gender:  user?.gender  || '',
@@ -14,6 +15,27 @@ const Profile = () => {
     address: user?.address || '',
   });
   const [saving, setSaving] = useState(false);
+
+  // Fetch fresh profile data from DB on mount (fixes stale JWT / old accounts)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await api('/api/auth/me');
+        updateUser(data.user);
+        setForm({
+          name:    data.user.name    || '',
+          gender:  data.user.gender  || '',
+          mobile:  data.user.mobile  || '',
+          address: data.user.address || '',
+        });
+      } catch {
+        // fall back to cached user data already in form
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
@@ -27,6 +49,13 @@ const Profile = () => {
     try {
       const data = await api('/api/auth/profile', { method: 'PUT', body: form });
       updateUser(data.user, data.token);
+      // Sync form with the saved values returned from server
+      setForm({
+        name:    data.user.name    || '',
+        gender:  data.user.gender  || '',
+        mobile:  data.user.mobile  || '',
+        address: data.user.address || '',
+      });
       showToast('Profile updated successfully!');
     } catch (err) {
       showToast(err.message || 'Failed to update profile.', 'error');
@@ -42,6 +71,9 @@ const Profile = () => {
         <div className="profile-avatar">{user?.name?.charAt(0).toUpperCase()}</div>
         <p className="profile-email">{user?.email}</p>
 
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#888', marginTop: '20px' }}>Loading profile...</p>
+        ) : (
         <form onSubmit={handleSave} className="profile-form">
           <div className="profile-field">
             <label>Full Name</label>
@@ -69,6 +101,7 @@ const Profile = () => {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </form>
+        )}
       </div>
     </div>
   );
