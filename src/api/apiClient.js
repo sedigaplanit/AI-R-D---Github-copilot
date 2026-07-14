@@ -18,8 +18,10 @@ const api = async (path, options = {}) => {
     ...rest,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Request failed');
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = {}; }
+  if (!res.ok) throw new Error(data.message || `Server error (${res.status})`);
   return data;
 };
 
