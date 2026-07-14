@@ -29,8 +29,19 @@ const ShopContextProvider = (props) => {
         Object.keys(sizes).forEach((id) => {
             if (cart[id] > 0) filtered[id] = sizes[id];
         });
+        // Write the cleaned result back so stale entries don't accumulate
+        localStorage.setItem('selectedSizes', JSON.stringify(filtered));
         return filtered;
     });
+
+    const clearProductSize = (itemId) => {
+        setSelectedSizes((prev) => {
+            const updated = { ...prev };
+            delete updated[itemId];
+            localStorage.setItem('selectedSizes', JSON.stringify(updated));
+            return updated;
+        });
+    };
 
     const setProductSize = (itemId, size) => {
         setSelectedSizes((prev) => {
@@ -50,8 +61,10 @@ const ShopContextProvider = (props) => {
 
     const removeFromCart = (itemId) => {
         setCartItems((prev) => {
-            const updated = { ...prev, [itemId]: Math.max(0, prev[itemId] - 1) };
+            const newQty = Math.max(0, prev[itemId] - 1);
+            const updated = { ...prev, [itemId]: newQty };
             localStorage.setItem('cartItems', JSON.stringify(updated));
+            if (newQty === 0) clearProductSize(itemId);
             return updated;
         });
     };
@@ -60,6 +73,7 @@ const ShopContextProvider = (props) => {
         setCartItems((prev) => {
             const updated = { ...prev, [itemId]: count };
             localStorage.setItem('cartItems', JSON.stringify(updated));
+            if (count === 0) clearProductSize(itemId);
             return updated;
         });
     };
