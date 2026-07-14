@@ -8,13 +8,27 @@ import { useNavigate } from "react-router-dom";
 
 const ProductDisplay = (props) => {
   const { product } = props;
-  const { addToCart } = useContext(ShopContext);
+  const { addToCart, cartItems, removeFromCart } = useContext(ShopContext);
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const cartQty = cartItems[product.id] || 0;
   const [added, setAdded] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
-  const [quantity, setQuantity] = useState(1);
+  const [localQty, setLocalQty] = useState(1);
   const [sizeError, setSizeError] = useState(false);
+
+  // displayed quantity: actual cart count when in cart, else local selector
+  const displayQty = cartQty > 0 ? cartQty : localQty;
+
+  const handleQtyIncrease = () => {
+    if (cartQty > 0) addToCart(product.id, 1);
+    else setLocalQty((q) => q + 1);
+  };
+
+  const handleQtyDecrease = () => {
+    if (cartQty > 0) removeFromCart(product.id);
+    else setLocalQty((q) => Math.max(1, q - 1));
+  };
 
   const handleAddToCart = () => {
     if (!selectedSize) {
@@ -23,8 +37,8 @@ const ProductDisplay = (props) => {
       return;
     }
     setSizeError(false);
-    addToCart(product.id, quantity);
-    showToast(`${quantity}× "${product.name.slice(0, 25)}..." added to cart!`);
+    addToCart(product.id, localQty);
+    showToast(`${localQty}× "${product.name.slice(0, 25)}..." added to cart!`);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   };
@@ -36,7 +50,7 @@ const ProductDisplay = (props) => {
       return;
     }
     setSizeError(false);
-    addToCart(product.id, quantity);
+    if (cartQty === 0) addToCart(product.id, localQty);
     navigate('/cart', { state: { openCheckout: true } });
   };
 
@@ -96,18 +110,27 @@ const ProductDisplay = (props) => {
         <div className="productdisplay-right-quantity">
           <h1>Quantity</h1>
           <div className="quantity-controls">
-            <button className="qty-btn" onClick={() => setQuantity((q) => Math.max(1, q - 1))}>−</button>
-            <span className="qty-value">{quantity}</span>
-            <button className="qty-btn" onClick={() => setQuantity((q) => q + 1)}>+</button>
+            <button className="qty-btn" onClick={handleQtyDecrease}>−</button>
+            <span className="qty-value">{displayQty}</span>
+            <button className="qty-btn" onClick={handleQtyIncrease}>+</button>
           </div>
         </div>
 
-        <button
-          className={`add-to-cart-btn${added ? ' added' : ''}`}
-          onClick={handleAddToCart}
-        >
-          {added ? '✓ Added to Cart' : 'Add to Cart'}
-        </button>
+        {cartQty > 0 ? (
+          <button
+            className="add-to-cart-btn added"
+            onClick={() => navigate('/cart')}
+          >
+            ✓ In Cart — View Cart
+          </button>
+        ) : (
+          <button
+            className={`add-to-cart-btn${added ? ' added' : ''}`}
+            onClick={handleAddToCart}
+          >
+            {added ? '✓ Added to Cart' : 'Add to Cart'}
+          </button>
+        )}
         <button className="buy-now-btn" onClick={handleBuyNow}>
           Buy Now
         </button>
