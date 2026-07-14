@@ -103,8 +103,7 @@ const ProductDisplay = (props) => {
               >
                 {size}
               </div>
-            ))}}
-          </div>
+            ))}          </div>
         </div>
 
         <div className="productdisplay-right-quantity">
