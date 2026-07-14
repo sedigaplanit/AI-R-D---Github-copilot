@@ -11,8 +11,16 @@ async function initDb() {
         name          VARCHAR(100) NOT NULL,
         email         VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
+        gender        VARCHAR(50),
+        mobile        VARCHAR(20),
+        address       TEXT,
         created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Add new columns to existing deployments
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS gender  VARCHAR(50);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile  VARCHAR(20);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
 
       CREATE TABLE IF NOT EXISTS cart (
         id         SERIAL PRIMARY KEY,

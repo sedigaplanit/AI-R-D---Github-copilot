@@ -1,15 +1,21 @@
 import React, { useContext, useState, useEffect } from 'react';
 import './CartItem.css';
 import { ShopContext } from '../../Context/ShopContext';
+import { AuthContext } from '../../Context/AuthContext';
+import { useWishlist } from '../../Context/WishlistContext';
 import remove_icon from '../Assets/cart_cross_icon.png';
 import CheckoutModal from './CheckoutModal';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const CartItems = () => {
-    const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI } = useContext(ShopContext);
+    const { getTotalCartAmount, getTotalCartItems, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI } = useContext(ShopContext);
+    const { user } = useContext(AuthContext);
+    const { clearWishlistItems } = useWishlist();
+    const navigate = useNavigate();
     const [showCheckout, setShowCheckout] = useState(false);
     const location = useLocation();
     const total = getTotalCartAmount();
+    const cartCount = getTotalCartItems();
 
     useEffect(() => {
         if (location.state?.openCheckout) {
@@ -94,7 +100,16 @@ const CartItems = () => {
                             <h3>LKR {getTotalCartAmount()}</h3>
                         </div>
                     </div>
-                    <button onClick={() => setShowCheckout(true)}>Proceed to Checkout</button>
+                    {!user ? (
+                        <div className="cart-guest-prompt">
+                            <p>Sign in to proceed with checkout</p>
+                            <button className="cart-login-btn" onClick={() => navigate('/login', { state: { defaultTab: 'signup' } })}>Sign Up / Login</button>
+                        </div>
+                    ) : cartCount === 0 ? (
+                        <button style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>Proceed to Checkout</button>
+                    ) : (
+                        <button onClick={() => setShowCheckout(true)}>Proceed to Checkout</button>
+                    )}
                 </div>
             </div>
             {showCheckout && (
@@ -103,9 +118,9 @@ const CartItems = () => {
                     items={orderItems}
                     onClose={() => setShowCheckout(false)}
                     onSuccess={async () => {
-                        clearCart();           // clear local state
-                        await clearCartOnAPI(); // clear server-side cart
-                        // Do NOT close here — CheckoutModal's useEffect fires onClose()+navigate('/') after 2.5s
+                        clearWishlistItems(orderItems.map(i => i.id));
+                        clearCart();
+                        await clearCartOnAPI();
                     }}
                 />
             )}

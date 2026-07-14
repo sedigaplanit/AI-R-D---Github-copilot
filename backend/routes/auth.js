@@ -6,14 +6,14 @@ const requireAuth = require('../middleware/requireAuth');
 
 const sign = (user) =>
   jwt.sign(
-    { id: user.id, name: user.name, email: user.email },
+    { id: user.id, name: user.name, email: user.email, gender: user.gender || null, mobile: user.mobile || null, address: user.address || null },
     process.env.JWT_SECRET || 'dev_jwt_secret',
     { expiresIn: '7d' }
   );
 
 // ── POST /api/auth/signup ──────────────────────────────────────────────────────
 router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, gender, mobile, address } = req.body;
   if (!name || !email || !password)
     return res.status(400).json({ message: 'All fields are required.' });
 
@@ -24,11 +24,11 @@ router.post('/signup', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
-      [name, email, hash]
+      'INSERT INTO users (name, email, password_hash, gender, mobile, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [name, email, hash, gender || null, mobile || null, address || null]
     );
 
-    const user = { id: rows[0].id, name, email };
+    const user = { id: rows[0].id, name, email, gender: gender || null, mobile: mobile || null, address: address || null };
     res.status(201).json({ user, token: sign(user) });
   } catch (err) {
     console.error(err);
@@ -52,7 +52,7 @@ router.post('/login', async (req, res) => {
     if (!match)
       return res.status(401).json({ message: 'Invalid email or password.' });
 
-    const user = { id: dbUser.id, name: dbUser.name, email: dbUser.email };
+    const user = { id: dbUser.id, name: dbUser.name, email: dbUser.email, gender: dbUser.gender, mobile: dbUser.mobile, address: dbUser.address };
     res.json({ user, token: sign(user) });
   } catch (err) {
     console.error(err);
@@ -66,5 +66,24 @@ router.post('/logout', (_req, res) => res.json({ message: 'Logged out.' }));
 
 // ── GET /api/auth/me ───────────────────────────────────────────────────────────
 router.get('/me', requireAuth, (req, res) => res.json({ user: req.user }));
+
+// ── PUT /api/auth/profile ──────────────────────────────────────────────────────
+router.put('/profile', requireAuth, async (req, res) => {
+  const { name, gender, mobile, address } = req.body;
+  if (!name || name.trim().length < 3)
+    return res.status(400).json({ message: 'Name must be at least 3 characters.' });
+
+  try {
+    const { rows } = await pool.query(
+      'UPDATE users SET name=$1, gender=$2, mobile=$3, address=$4 WHERE id=$5 RETURNING id, name, email, gender, mobile, address',
+      [name.trim(), gender || null, mobile || null, address || null, req.user.id]
+    );
+    const user = rows[0];
+    res.json({ user, token: sign(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+});
 
 module.exports = router;

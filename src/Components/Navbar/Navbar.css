@@ -1,3 +1,15 @@
+@keyframes shopPulse {
+  0%   { color: #ff4141; }
+  50%  { color: #e63a3a; transform: scale(1.15); }
+  100% { color: #ff4141; }
+}
+
+.nav-item-highlight > a {
+  animation: shopPulse 0.5s ease-in-out 5;
+  color: #ff4141 !important;
+  font-weight: 700 !important;
+}
+
 .navbar {
     display: flex;
     justify-content: space-between;

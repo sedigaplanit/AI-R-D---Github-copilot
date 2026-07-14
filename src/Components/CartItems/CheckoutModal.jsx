@@ -15,21 +15,20 @@ const PAYMENT_METHODS = [
 const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [step, setStep] = useState('method');           // method → form → processing → success
+  const [step, setStep] = useState('method');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [orderNumber] = useState(generateOrderNumber);
   const [cardData, setCardData] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
-  const [codData, setCodData]   = useState({ address: '', city: '', phone: '' });
+  const [deliveryData, setDeliveryData] = useState({ address: '', city: '', phone: '' });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (step === 'success') {
-      const timer = setTimeout(() => { onClose(); navigate('/'); }, 6000);
+      const timer = setTimeout(() => { onClose(); navigate('/', { state: { highlightShop: true } }); }, 6000);
       return () => clearTimeout(timer);
     }
   }, [step, onClose, navigate]);
 
-  // ── Card field change ────────────────────────────────────────────────────────
   const handleCardChange = (e) => {
     let { name, value } = e.target;
     if (name === 'cardNumber') value = value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim();
@@ -38,24 +37,22 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
     setCardData((p) => ({ ...p, [name]: value }));
   };
 
-  // ── Validation ───────────────────────────────────────────────────────────────
+  const handleDeliveryChange = (e) => setDeliveryData((p) => ({ ...p, [e.target.name]: e.target.value }));
+
   const validate = () => {
     const e = {};
+    if (!deliveryData.address.trim()) e.address = 'Required';
+    if (!deliveryData.city.trim()) e.city = 'Required';
+    if (!deliveryData.phone.trim()) e.phone = 'Required';
     if (paymentMethod === 'card') {
       if (!cardData.cardName.trim()) e.cardName = 'Required';
       if (cardData.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Enter a valid 16-digit card number';
       if (cardData.expiry.length < 5) e.expiry = 'Enter MM/YY';
       if (cardData.cvv.length < 3) e.cvv = 'Enter 3-digit CVV';
     }
-    if (paymentMethod === 'cod') {
-      if (!codData.address.trim()) e.address = 'Required';
-      if (!codData.city.trim()) e.city = 'Required';
-      if (!codData.phone.trim()) e.phone = 'Required';
-    }
     return e;
   };
 
-  // ── Submit payment ───────────────────────────────────────────────────────────
   const handlePay = (e) => {
     e.preventDefault();
     const errs = validate();
@@ -77,10 +74,10 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="checkout-overlay" onClick={step === 'success' ? undefined : undefined}>
+    <div className="checkout-overlay">
       <div className="checkout-box" onClick={(e) => e.stopPropagation()}>
 
-        {/* ── Step 1: Choose payment method ── */}
+        {/* Step 1: Payment method */}
         {step === 'method' && (
           <>
             <div className="checkout-header">
@@ -103,7 +100,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
           </>
         )}
 
-        {/* ── Step 2: Payment form ── */}
+        {/* Step 2: Delivery address + payment details */}
         {step === 'form' && (
           <>
             <div className="checkout-header">
@@ -113,8 +110,28 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
             <p className="checkout-total">Amount to pay: <strong>LKR {total.toFixed(2)}</strong></p>
 
             <form onSubmit={handlePay} className="checkout-form">
+              <p className="checkout-section-label">Delivery Address</p>
+              <div className="checkout-field">
+                <label>Street Address</label>
+                <input name="address" placeholder="No. 12, Main Street" value={deliveryData.address} onChange={handleDeliveryChange} />
+                {errors.address && <span className="checkout-error">{errors.address}</span>}
+              </div>
+              <div className="checkout-row">
+                <div className="checkout-field">
+                  <label>City</label>
+                  <input name="city" placeholder="Colombo" value={deliveryData.city} onChange={handleDeliveryChange} />
+                  {errors.city && <span className="checkout-error">{errors.city}</span>}
+                </div>
+                <div className="checkout-field">
+                  <label>Phone</label>
+                  <input name="phone" placeholder="+94 77 000 0000" value={deliveryData.phone} onChange={handleDeliveryChange} />
+                  {errors.phone && <span className="checkout-error">{errors.phone}</span>}
+                </div>
+              </div>
+
               {paymentMethod === 'card' && (
                 <>
+                  <p className="checkout-section-label" style={{ marginTop: '12px' }}>Card Details</p>
                   <div className="checkout-field">
                     <label>Cardholder Name</label>
                     <input name="cardName" placeholder="John Doe" value={cardData.cardName} onChange={handleCardChange} />
@@ -147,28 +164,6 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
                 </div>
               )}
 
-              {paymentMethod === 'cod' && (
-                <>
-                  <div className="checkout-field">
-                    <label>Delivery Address</label>
-                    <input name="address" placeholder="No. 12, Main Street" value={codData.address} onChange={(e) => setCodData((p) => ({ ...p, address: e.target.value }))} />
-                    {errors.address && <span className="checkout-error">{errors.address}</span>}
-                  </div>
-                  <div className="checkout-row">
-                    <div className="checkout-field">
-                      <label>City</label>
-                      <input name="city" placeholder="Colombo" value={codData.city} onChange={(e) => setCodData((p) => ({ ...p, city: e.target.value }))} />
-                      {errors.city && <span className="checkout-error">{errors.city}</span>}
-                    </div>
-                    <div className="checkout-field">
-                      <label>Phone</label>
-                      <input name="phone" placeholder="+94 77 000 0000" value={codData.phone} onChange={(e) => setCodData((p) => ({ ...p, phone: e.target.value }))} />
-                      {errors.phone && <span className="checkout-error">{errors.phone}</span>}
-                    </div>
-                  </div>
-                </>
-              )}
-
               <button type="submit" className="checkout-pay-btn">
                 {paymentMethod === 'card' ? `Pay LKR ${total.toFixed(2)}` : paymentMethod === 'paypal' ? 'Proceed to PayPal' : 'Confirm Order'}
               </button>
@@ -177,7 +172,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
           </>
         )}
 
-        {/* ── Step 3: Processing ── */}
+        {/* Step 3: Processing */}
         {step === 'processing' && (
           <div className="checkout-processing">
             <div className="checkout-spinner"></div>
@@ -186,7 +181,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
           </div>
         )}
 
-        {/* ── Step 4: Success ── */}
+        {/* Step 4: Success */}
         {step === 'success' && (
           <div className="checkout-success">
             <div className="checkout-success-icon">✓</div>
@@ -199,7 +194,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
             <p className="checkout-confirmation">This page will redirect in a few seconds...</p>
             <div className="checkout-success-actions">
               <button className="checkout-pay-btn" onClick={() => { onClose(); navigate('/orders'); }}>View My Orders</button>
-              <button className="checkout-cancel-btn" onClick={() => { onClose(); navigate('/'); }}>Continue Shopping</button>
+              <button className="checkout-cancel-btn" onClick={() => { onClose(); navigate('/', { state: { highlightShop: true } }); }}>Continue Shopping</button>
             </div>
           </div>
         )}

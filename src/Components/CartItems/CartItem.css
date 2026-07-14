@@ -105,6 +105,34 @@
     text-align: center;
 }
 
+.cart-guest-prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.cart-guest-prompt p {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.cart-login-btn {
+    width: 262px;
+    height: 48px;
+    border: none;
+    border-radius: 6px;
+    background: #ff5a5a;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.cart-login-btn:hover { background: #e63a3a; }
+
 @media (max-width: 768px) {
     .cartitems {
         margin: 50px 5%;

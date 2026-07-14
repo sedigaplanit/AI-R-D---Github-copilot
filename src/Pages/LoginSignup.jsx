@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import LoginForm from '../Components/LoginSignup/LoginForm';
 import SignupForm from '../Components/LoginSignup/SignupForm';
 
 const LoginSignup = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.state?.defaultTab !== 'signup');
 
   return (
     <div className="loginsignup">

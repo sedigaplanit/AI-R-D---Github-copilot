@@ -1,3 +1,23 @@
+.loginsignup-select {
+    height: 55px;
+    width: 100%;
+    padding: 0 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    color: #333;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.loginsignup-select:focus {
+    border-color: #ff4141;
+    box-shadow: 0 0 5px rgba(255, 65, 65, 0.5);
+}
+
 .loginsignup {
     display: flex;
     justify-content: center;

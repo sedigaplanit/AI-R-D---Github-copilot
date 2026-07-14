@@ -20,8 +20,16 @@ export const WishlistProvider = ({ children }) => {
 
   const isWishlisted = (productId) => wishlist.includes(productId);
 
+  const clearWishlistItems = (productIds) => {
+    setWishlist((prev) => {
+      const next = prev.filter((id) => !productIds.includes(id));
+      localStorage.setItem('wishlist', JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
-    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isWishlisted }}>
+    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isWishlisted, clearWishlistItems }}>
       {children}
     </WishlistContext.Provider>
   );

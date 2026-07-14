@@ -1,8 +1,8 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import "./Navbar.css";
 import logo from "../Assets/logo.png";
 import cart_icon from "../Assets/cart_icon.png";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ShopContext } from "../../Context/ShopContext";
 import { AuthContext } from "../../Context/AuthContext";
 import { useWishlist } from "../../Context/WishlistContext";
@@ -10,15 +10,26 @@ import { useWishlist } from "../../Context/WishlistContext";
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [shopHighlight, setShopHighlight] = useState(false);
   const { getTotalCartItems, saveCartToAPI, clearCart } = useContext(ShopContext);
   const { user, logout } = useContext(AuthContext);
   const { wishlist } = useWishlist();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state?.highlightShop) {
+      setMenu('shop');
+      setShopHighlight(true);
+      const t = setTimeout(() => setShopHighlight(false), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [location.state]);
 
   const handleLogout = async () => {
-    await saveCartToAPI(); // persist cart to server before logging out
+    await saveCartToAPI();
     clearCart();
-    logout();             // clears user + jwt_token from localStorage
+    logout();
     navigate("/");
   };
 
@@ -40,7 +51,7 @@ const Navbar = () => {
       {/* All navigation links wrapped in a parent element */}
       <div className={`nav-links-wrapper`}>
         <ul className={`nav-menu ${isMenuOpen ? "open" : ""}`}>
-          <li onClick={() => setMenu("shop")}>
+          <li onClick={() => setMenu("shop")} className={shopHighlight ? 'nav-item-highlight' : ''}>
             <Link style={{ textDecoration: "none" }} to="/">
               Shop
             </Link>
@@ -70,6 +81,9 @@ const Navbar = () => {
       <div className="nav-login-cart">
         {user ? (
           <>
+            <Link to="/profile" style={{ textDecoration: 'none' }}>
+              <button>Profile</button>
+            </Link>
             <Link to="/orders" style={{ textDecoration: 'none' }}>
               <button>My Orders</button>
             </Link>

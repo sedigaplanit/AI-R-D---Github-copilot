@@ -14,6 +14,10 @@ const Hero = () => {
     navigate('/womens');
   };
 
+  const handleSignUp = () => {
+    navigate('/login', { state: { defaultTab: 'signup' } });
+  };
+
   return (
     <div className="hero">
       <div className="hero-left">
@@ -23,6 +27,9 @@ const Hero = () => {
         <div className="hero-buttons">
           <button className="cta-primary" onClick={handleShopNow}>
             Shop Now
+          </button>
+          <button className="cta-signup" onClick={handleSignUp}>
+            Sign Up
           </button>
           <button className="cta-secondary">
             Learn More <img src={arrow_icon} alt="arrow icon" />
