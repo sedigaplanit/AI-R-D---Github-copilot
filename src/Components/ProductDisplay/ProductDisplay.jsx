@@ -8,12 +8,12 @@ import { useNavigate } from "react-router-dom";
 
 const ProductDisplay = (props) => {
   const { product } = props;
-  const { addToCart, cartItems, removeFromCart } = useContext(ShopContext);
+  const { addToCart, cartItems, removeFromCart, selectedSizes, setProductSize } = useContext(ShopContext);
   const { showToast } = useToast();
   const navigate = useNavigate();
   const cartQty = cartItems[product.id] || 0;
   const [added, setAdded] = useState(false);
-  const [selectedSize, setSelectedSize] = useState(null);
+  const selectedSize = selectedSizes[product.id] || null;
   const [localQty, setLocalQty] = useState(1);
   const [sizeError, setSizeError] = useState(false);
 
@@ -99,11 +99,11 @@ const ProductDisplay = (props) => {
               <div
                 key={size}
                 className={`size-btn${selectedSize === size ? ' size-selected' : ''}${sizeError && !selectedSize ? ' size-error' : ''}`}
-                onClick={() => { setSelectedSize(size); setSizeError(false); }}
+                onClick={() => { setProductSize(product.id, size); setSizeError(false); }}
               >
                 {size}
               </div>
-            ))}
+            ))}}
           </div>
         </div>
 

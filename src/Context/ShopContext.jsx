@@ -18,6 +18,19 @@ const ShopContextProvider = (props) => {
         return saved ? JSON.parse(saved) : getDefaultCart();
     });
 
+    const [selectedSizes, setSelectedSizes] = useState(() => {
+        const saved = localStorage.getItem('selectedSizes');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    const setProductSize = (itemId, size) => {
+        setSelectedSizes((prev) => {
+            const updated = { ...prev, [itemId]: size };
+            localStorage.setItem('selectedSizes', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     const addToCart = (itemId, qty = 1) => {
         setCartItems((prev) => {
             const updated = { ...prev, [itemId]: prev[itemId] + qty };
@@ -111,6 +124,8 @@ const ShopContextProvider = (props) => {
         loadCartFromAPI,
         saveCartToAPI,
         clearCartOnAPI,
+        selectedSizes,
+        setProductSize,
     };
 
     return (

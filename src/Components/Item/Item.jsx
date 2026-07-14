@@ -8,11 +8,13 @@ const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 const Item = (props) => {
   const { toggleWishlist, isWishlisted } = useWishlist();
-  const { cartItems, addToCart, removeFromCart } = useContext(ShopContext);
+  const { cartItems, addToCart, removeFromCart, selectedSizes, setProductSize } = useContext(ShopContext);
   const wishlisted = isWishlisted(props.id);
   const qty = cartItems[props.id] || 0;
-  const [selectedSize, setSelectedSize] = useState(null);
+  const selectedSize = selectedSizes[props.id] || null;
   const [sizeError, setSizeError] = useState(false);
+
+  const handleSizeSelect = (s) => { setProductSize(props.id, s); setSizeError(false); };
 
   const handleAdd = () => {
     if (!selectedSize) { setSizeError(true); return; }
@@ -45,7 +47,7 @@ const Item = (props) => {
                 <button
                   key={s}
                   className={`item-size-btn${selectedSize === s ? ' selected' : ''}${sizeError ? ' error' : ''}`}
-                  onClick={() => { setSelectedSize(s); setSizeError(false); }}
+                  onClick={() => handleSizeSelect(s)}
                 >{s}</button>
               ))}
             </div>
