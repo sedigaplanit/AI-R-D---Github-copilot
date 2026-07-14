@@ -185,16 +185,94 @@
   color: #2e7d32;
 }
 
-.checkout-order {
-  font-size: 14px;
-  color: #555;
-  margin: 0;
+.checkout-order-number {
+  background: #f0f7f0;
+  border: 1px solid #c3e6cb;
+  border-radius: 8px;
+  padding: 12px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.checkout-order-label {
+  font-size: 12px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.checkout-order-id {
+  font-size: 22px;
+  color: #2e7d32;
+  letter-spacing: 1px;
 }
 
 .checkout-confirmation {
   font-size: 12px;
   color: #888;
   margin: 0;
+}
+
+.checkout-success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Payment method selector */
+.checkout-section-label {
+  font-size: 13px;
+  color: #888;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.checkout-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.checkout-method-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.checkout-method-card input[type="radio"] { display: none; }
+
+.checkout-method-card.selected {
+  border-color: #ff4141;
+  background: #fff5f5;
+}
+
+.checkout-method-icon { font-size: 22px; }
+
+/* PayPal mock */
+.checkout-paypal {
+  text-align: center;
+  padding: 20px 0;
+  color: #555;
+}
+
+.checkout-paypal-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #003087;
+  margin-top: 12px;
 }
 
 @keyframes fadeIn {

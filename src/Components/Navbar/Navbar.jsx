@@ -5,12 +5,14 @@ import cart_icon from "../Assets/cart_icon.png";
 import { Link, useNavigate } from "react-router-dom";
 import { ShopContext } from "../../Context/ShopContext";
 import { AuthContext } from "../../Context/AuthContext";
+import { useWishlist } from "../../Context/WishlistContext";
 
 const Navbar = () => {
   const [menu, setMenu] = useState("shop");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { getTotalCartItems, saveCartToAPI, clearCart } = useContext(ShopContext);
   const { user, logout } = useContext(AuthContext);
+  const { wishlist } = useWishlist();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -78,6 +80,10 @@ const Navbar = () => {
             <button>Login</button>
           </Link>
         )}
+        <Link to="/wishlist" className="nav-wishlist-link">
+          <span className="nav-wishlist-icon">♡</span>
+          {wishlist.length > 0 && <span className="nav-wishlist-count">{wishlist.length}</span>}
+        </Link>
         <Link to="/cart">
           <img src={cart_icon} alt="Cart Icon" />
         </Link>

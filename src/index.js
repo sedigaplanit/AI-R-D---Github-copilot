@@ -6,15 +6,18 @@ import reportWebVitals from './reportWebVitals';
 import ShopContextProvider from './Context/ShopContext';
 import { AuthProvider } from "../src/Context/AuthContext";
 import { ToastProvider } from './Context/ToastContext';
+import { WishlistProvider } from './Context/WishlistContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <AuthProvider>
       <ShopContextProvider>
-        <ToastProvider>
-          <App />
-        </ToastProvider>
+        <WishlistProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </WishlistProvider>
       </ShopContextProvider>
     </AuthProvider>
   </React.StrictMode>

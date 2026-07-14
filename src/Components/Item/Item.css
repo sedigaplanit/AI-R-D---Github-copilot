@@ -9,12 +9,40 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.item img {
+.item-img-wrapper {
+    position: relative;
+}
+
+.item-img-wrapper img {
     width: 100%;
     height: auto;
     border-radius: 8px;
     object-fit: cover;
+    display: block;
 }
+
+.item-wishlist-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    color: #bbb;
+    transition: color 0.2s, transform 0.2s;
+    line-height: 1;
+}
+
+.item-wishlist-btn:hover { transform: scale(1.15); }
+.item-wishlist-btn.wishlisted { color: #e74c3c; }
 
 .item p {
     font-size: 16px;
