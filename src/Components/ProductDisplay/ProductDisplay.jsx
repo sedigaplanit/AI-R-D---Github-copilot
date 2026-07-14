@@ -4,11 +4,13 @@ import start_icon from "../Assets/star_icon.png";
 import star_dull_icon from "../Assets/star_dull_icon.png";
 import { ShopContext } from "../../Context/ShopContext";
 import { useToast } from "../../Context/ToastContext";
+import { useNavigate } from "react-router-dom";
 
 const ProductDisplay = (props) => {
   const { product } = props;
   const { addToCart } = useContext(ShopContext);
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [added, setAdded] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
@@ -25,6 +27,17 @@ const ProductDisplay = (props) => {
     showToast(`${quantity}× "${product.name.slice(0, 25)}..." added to cart!`);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
+  };
+
+  const handleBuyNow = () => {
+    if (!selectedSize) {
+      setSizeError(true);
+      showToast('Please select a size first!', 'error');
+      return;
+    }
+    setSizeError(false);
+    addToCart(product.id, quantity);
+    navigate('/cart', { state: { openCheckout: true } });
   };
 
   return (
@@ -94,6 +107,9 @@ const ProductDisplay = (props) => {
           onClick={handleAddToCart}
         >
           {added ? '✓ Added to Cart' : 'Add to Cart'}
+        </button>
+        <button className="buy-now-btn" onClick={handleBuyNow}>
+          Buy Now
         </button>
 
         <p className="productdisplay-right-category">

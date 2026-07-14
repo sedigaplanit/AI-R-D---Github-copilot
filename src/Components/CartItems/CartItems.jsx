@@ -1,13 +1,21 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import './CartItem.css';
 import { ShopContext } from '../../Context/ShopContext';
 import remove_icon from '../Assets/cart_cross_icon.png';
 import CheckoutModal from './CheckoutModal';
+import { useLocation } from 'react-router-dom';
 
 const CartItems = () => {
     const { getTotalCartAmount, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI } = useContext(ShopContext);
     const [showCheckout, setShowCheckout] = useState(false);
+    const location = useLocation();
     const total = getTotalCartAmount();
+
+    useEffect(() => {
+        if (location.state?.openCheckout) {
+            setShowCheckout(true);
+        }
+    }, [location.state]);
 
     const orderItems = all_product
         .filter((p) => cartItems[p.id] > 0)
