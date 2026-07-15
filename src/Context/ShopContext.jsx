@@ -1,6 +1,7 @@
 import React, { createContext, useState } from "react";
 import all_product from '../Components/Assets/all_product';
 import api from '../api/apiClient';
+import { trackEvent } from '../utils/analytics';
 
 export const ShopContext = createContext(null);
 
@@ -52,6 +53,7 @@ const ShopContextProvider = (props) => {
     };
 
     const addToCart = (itemId, qty = 1) => {
+        trackEvent('CART_ADD', { productId: itemId, meta: { qty } });
         setCartItems((prev) => {
             const updated = { ...prev, [itemId]: prev[itemId] + qty };
             localStorage.setItem('cartItems', JSON.stringify(updated));
@@ -60,6 +62,7 @@ const ShopContextProvider = (props) => {
     };
 
     const removeFromCart = (itemId) => {
+        trackEvent('CART_REMOVE', { productId: itemId, meta: { qty: 1 } });
         setCartItems((prev) => {
             const newQty = Math.max(0, prev[itemId] - 1);
             const updated = { ...prev, [itemId]: newQty };

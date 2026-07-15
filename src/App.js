@@ -1,7 +1,7 @@
 import './App.css';
 import Navbar from './Components/Navbar/Navbar';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useContext, useEffect } from 'react';
 import Shop from './Pages/Shop';
 import ShopCategory from './Pages/ShopCategory';
 import Product from './Pages/Product';
@@ -15,6 +15,16 @@ import men_banner from './Components/Assets/banner_mens.png';
 import women_banner from './Components/Assets/banner_women.png';
 import kids_banner from './Components/Assets/banner_kids.png';
 import { AuthContext } from "../src/Context/AuthContext";
+import { trackEvent } from './utils/analytics';
+
+/** Fires a PAGE_VIEW event whenever the route changes */
+function PageLogger() {
+  const location = useLocation();
+  useEffect(() => {
+    trackEvent('PAGE_VIEW', { page: location.pathname });
+  }, [location.pathname]);
+  return null;
+}
 
 function App() {
   const { user } = useContext(AuthContext);
@@ -22,6 +32,7 @@ function App() {
   return (
     <div>
       <Router basename="/AI-R-D---Github-copilot">
+        <PageLogger />
         <Navbar />
         <Routes>
           <Route path="/" element={<Shop />} />

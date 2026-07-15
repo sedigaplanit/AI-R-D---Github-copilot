@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { trackEvent } from '../utils/analytics';
 
 const WishlistContext = createContext();
 
@@ -10,7 +11,9 @@ export const WishlistProvider = ({ children }) => {
 
   const toggleWishlist = (productId) => {
     setWishlist((prev) => {
-      const next = prev.includes(productId)
+      const removing = prev.includes(productId);
+      trackEvent(removing ? 'WISHLIST_REMOVE' : 'WISHLIST_ADD', { productId });
+      const next = removing
         ? prev.filter((id) => id !== productId)
         : [...prev, productId];
       localStorage.setItem('wishlist', JSON.stringify(next));

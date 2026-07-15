@@ -1,13 +1,24 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { ShopContext } from '../Context/ShopContext';
 import { useParams } from 'react-router';
 import Breadcrump from '../Components/Breadcrump/Breadcrump';
 import ProductDisplay from '../Components/ProductDisplay/ProductDisplay';
+import { trackEvent } from '../utils/analytics';
 
 const Product = () => {
   const { all_product } = useContext(ShopContext);
   const { productId } = useParams();
   const product = all_product?.find((e) => e.id === Number(productId));
+
+  useEffect(() => {
+    if (product) {
+      trackEvent('PRODUCT_VIEW', {
+        productId: product.id,
+        productName: product.name,
+        category: product.category,
+      });
+    }
+  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!product) {
     return <div>Product not found or still loading...</div>;

@@ -9,6 +9,7 @@ const authRouter = require('./routes/auth');
 const cartRouter = require('./routes/cart');
 const ordersRouter = require('./routes/orders');
 const logsRouter = require('./routes/logs');
+const eventsRouter = require('./routes/events');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/cart', cartRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/admin/logs', logsRouter);
+app.use('/api/events', eventsRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
