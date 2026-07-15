@@ -19,6 +19,8 @@ services:
         generateValue: true          # Render auto-generates a secure random value
       - key: CLIENT_URL
         value: https://sedigaplanit.github.io
+      - key: LOG_SECRET
+        generateValue: true          # Render auto-generates a secure random value
 
 databases:
   - name: onestyle-db
