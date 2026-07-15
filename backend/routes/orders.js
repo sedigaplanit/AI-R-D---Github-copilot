@@ -1,11 +1,16 @@
 const router = require('express').Router();
 const pool = require('../db');
 const requireAuth = require('../middleware/requireAuth');
+const { logger, maskUserId } = require('../logger');
+
+const log = logger.child({ component: 'app.routes.orders' });
 
 router.use(requireAuth);
 
 // ── GET /api/orders ────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
+  const trace = `ord_${req.traceId}`;
+  log.info(`[Trace: ${trace}] Order history request. User: ${maskUserId(req.user.id)}, Method: GET, URL: /api/orders`);
   try {
     const { rows: orders } = await pool.query(
       'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
@@ -33,9 +38,10 @@ router.get('/', async (req, res) => {
       })
     );
 
+    log.info(`[Trace: ${trace}] Retrieved ${result.length} order(s) for User: ${maskUserId(req.user.id)}.`);
     res.json({ orders: result });
   } catch (err) {
-    console.error(err);
+    log.error(`[Trace: ${trace}] Order history fetch failed. User: ${maskUserId(req.user.id)} — ${err.message}`);
     res.status(500).json({ message: 'Server error.' });
   }
 });
@@ -46,9 +52,14 @@ router.post('/', async (req, res) => {
   if (!orderNumber || !total || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ message: 'Invalid order data.' });
 
+  const trace = `ord_${req.traceId}`;
+  log.info(`[Trace: ${trace}] Incoming Order Request. User: ${maskUserId(req.user.id)}, Method: POST, URL: /api/orders`);
+  log.info(`[Trace: ${trace}] Validating order payload. Order: ${orderNumber}, Items: ${items.length}, Total: $${parseFloat(total).toFixed(2)}`);
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    log.info(`[Trace: ${trace}] DB transaction initiated. Inserting order record.`);
 
     const { rows } = await client.query(
       'INSERT INTO orders (order_number, user_id, total, created_at) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -65,12 +76,14 @@ router.post('/', async (req, res) => {
       `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity) VALUES ${placeholders}`,
       values
     );
+    log.info(`[Trace: ${trace}] Order items persisted. ${items.length} line item(s) inserted.`);
 
     await client.query('COMMIT');
+    log.info(`[Trace: ${trace}] Order committed successfully. Order: ${orderNumber}, User: ${maskUserId(req.user.id)}.`);
     res.status(201).json({ message: 'Order saved.', orderId });
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error(err);
+    log.error(`[Trace: ${trace}] Order placement failed, transaction rolled back. Order: ${orderNumber}, User: ${maskUserId(req.user.id)} — ${err.message}`);
     res.status(500).json({ message: 'Server error.' });
   } finally {
     client.release();
