@@ -1,0 +1,853 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OneStyle API",
+    "description": "Express + PostgreSQL backend for OneStyle e-commerce app",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:5000", "description": "Local dev" },
+    { "url": "https://your-render-backend.onrender.com", "description": "Production (Render)" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "name", "email"],
+        "properties": {
+          "id":      { "type": "integer", "example": 1 },
+          "name":    { "type": "string",  "example": "Jane Doe" },
+          "email":   { "type": "string",  "format": "email", "example": "jane@example.com" },
+          "gender":  { "type": "string",  "nullable": true, "example": "female" },
+          "mobile":  { "type": "string",  "nullable": true, "example": "+44 7700 900000" },
+          "address": { "type": "string",  "nullable": true, "example": "123 High St, London" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": ["user", "token"],
+        "properties": {
+          "user":  { "$ref": "#/components/schemas/User" },
+          "token": { "type": "string", "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "required": ["id", "name", "category", "image_url", "new_price", "old_price"],
+        "properties": {
+          "id":                { "type": "integer", "example": 1 },
+          "name":              { "type": "string",  "example": "Casual Striped Blouse with Peplum Hem" },
+          "category":          { "type": "string",  "enum": ["women", "men", "kid"] },
+          "image_url":         { "type": "string",  "example": "product_1.png" },
+          "new_price":         { "type": "number",  "format": "float", "example": 50.0 },
+          "old_price":         { "type": "number",  "format": "float", "example": 80.5 },
+          "description":       { "type": "string",  "nullable": true, "example": "A stylish striped blouse..." },
+          "is_new_collection": { "type": "boolean", "example": false },
+          "is_popular":        { "type": "boolean", "example": true },
+          "created_at":        { "type": "string",  "format": "date-time" }
+        }
+      },
+      "CartItems": {
+        "type": "object",
+        "description": "Map of product_id (string key) to quantity",
+        "additionalProperties": { "type": "integer", "minimum": 1 },
+        "example": { "1": 2, "5": 1, "10": 3 }
+      },
+      "OrderItem": {
+        "type": "object",
+        "required": ["id", "name", "price", "quantity"],
+        "properties": {
+          "id":       { "type": "integer",  "example": 1 },
+          "name":     { "type": "string",   "example": "Classic T-Shirt" },
+          "image":    { "type": "string",   "example": "https://example.com/shirt.jpg" },
+          "price":    { "type": "number",   "format": "float", "example": 29.99 },
+          "quantity": { "type": "integer",  "minimum": 1, "example": 2 }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "required": ["id", "date", "total", "items"],
+        "properties": {
+          "id":    { "type": "string",  "example": "ORD-20240101-ABCD" },
+          "date":  { "type": "string",  "format": "date-time" },
+          "total": { "type": "number",  "format": "float", "example": 89.99 },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItem" }
+          }
+        }
+      },
+      "WishlistItem": {
+        "type": "object",
+        "required": ["product_id", "name", "category", "image_url", "new_price", "old_price"],
+        "properties": {
+          "product_id": { "type": "integer", "example": 5 },
+          "name":       { "type": "string",  "example": "Chic Overlap Collar Blouse" },
+          "category":   { "type": "string",  "enum": ["women", "men", "kid"] },
+          "image_url":  { "type": "string",  "example": "product_5.png" },
+          "new_price":  { "type": "number",  "format": "float", "example": 85.0 },
+          "old_price":  { "type": "number",  "format": "float", "example": 120.5 }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "required": ["id", "product_id", "user_id", "rating", "created_at"],
+        "properties": {
+          "id":            { "type": "integer", "example": 1 },
+          "product_id":    { "type": "integer", "example": 3 },
+          "user_id":       { "type": "integer", "example": 7 },
+          "reviewer_name": { "type": "string",  "example": "Jane Doe" },
+          "rating":        { "type": "integer", "minimum": 1, "maximum": 5, "example": 4 },
+          "comment":       { "type": "string",  "nullable": true, "example": "Great quality!" },
+          "created_at":    { "type": "string",  "format": "date-time" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string", "example": "Something went wrong." }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": { "type": "string", "example": "Success." }
+        }
+      },
+      "EventType": {
+        "type": "string",
+        "enum": [
+          "PAGE_VIEW",
+          "PRODUCT_VIEW",
+          "WISHLIST_ADD",
+          "WISHLIST_REMOVE",
+          "CART_ADD",
+          "CART_REMOVE",
+          "CATEGORY_BROWSE",
+          "SEARCH",
+          "CHECKOUT_START"
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "Server is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/signup": {
+      "post": {
+        "operationId": "signup",
+        "summary": "Register a new user",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name":     { "type": "string",  "example": "Jane Doe" },
+                  "email":    { "type": "string",  "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string",  "minLength": 6, "example": "SecurePass1!" },
+                  "gender":   { "type": "string",  "example": "female" },
+                  "mobile":   { "type": "string",  "example": "+44 7700 900000" },
+                  "address":  { "type": "string",  "example": "123 High St" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "409": {
+            "description": "Email already registered",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Authenticate and receive a JWT",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email":    { "type": "string", "format": "email", "example": "jane@example.com" },
+                  "password": { "type": "string", "example": "SecurePass1!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing email or password",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "Logout (client discards JWT)",
+        "tags": ["Auth"],
+        "responses": {
+          "200": {
+            "description": "Logged out",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "getMe",
+        "summary": "Get the authenticated user's profile",
+        "tags": ["Auth"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["user"],
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "404": {
+            "description": "User not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/auth/profile": {
+      "put": {
+        "operationId": "updateProfile",
+        "summary": "Update the authenticated user's profile",
+        "tags": ["Auth"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name":    { "type": "string", "minLength": 3, "example": "Jane Updated" },
+                  "gender":  { "type": "string", "example": "female" },
+                  "mobile":  { "type": "string", "example": "+44 7700 900000" },
+                  "address": { "type": "string", "example": "456 New St" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated, new JWT issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Name too short or missing",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "operationId": "getCart",
+        "summary": "Fetch the authenticated user's cart",
+        "tags": ["Cart"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Cart contents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["cartItems"],
+                  "properties": {
+                    "cartItems": { "$ref": "#/components/schemas/CartItems" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveCart",
+        "summary": "Replace the entire cart (full sync)",
+        "tags": ["Cart"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["cartItems"],
+                "properties": {
+                  "cartItems": { "$ref": "#/components/schemas/CartItems" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart saved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "cartItems missing or invalid",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearCart",
+        "summary": "Clear all items from the cart",
+        "tags": ["Cart"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Cart cleared",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "operationId": "getOrders",
+        "summary": "Get order history for the authenticated user",
+        "tags": ["Orders"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Order history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["orders"],
+                  "properties": {
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Order" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOrder",
+        "summary": "Place a new order",
+        "tags": ["Orders"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["id", "total", "items"],
+                "properties": {
+                  "id":    { "type": "string",  "example": "ORD-20240101-ABCD" },
+                  "date":  { "type": "string",  "format": "date-time" },
+                  "total": { "type": "number",  "format": "float", "example": 89.99 },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": { "$ref": "#/components/schemas/OrderItem" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["message", "orderId"],
+                  "properties": {
+                    "message": { "type": "string", "example": "Order saved." },
+                    "orderId": { "type": "integer", "example": 42 }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid order data",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "409": {
+            "description": "Duplicate order number",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "post": {
+        "operationId": "trackEvent",
+        "summary": "Fire-and-forget frontend analytics event",
+        "tags": ["Events"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["event"],
+                "properties": {
+                  "event":       { "$ref": "#/components/schemas/EventType" },
+                  "page":        { "type": "string",  "example": "/shop" },
+                  "productId":   { "type": "integer", "example": 5 },
+                  "productName": { "type": "string",  "example": "Classic T-Shirt" },
+                  "category":    { "type": "string",  "example": "women" },
+                  "userId":      { "type": "integer", "example": 1 },
+                  "sessionId":   { "type": "string",  "example": "abc123" },
+                  "meta": {
+                    "type": "object",
+                    "properties": {
+                      "qty":   { "type": "integer", "example": 2 },
+                      "query": { "type": "string",  "example": "blue dress" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Event recorded" },
+          "400": {
+            "description": "Unknown event type",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "operationId": "getProducts",
+        "summary": "List products with optional filtering and sorting",
+        "tags": ["Products"],
+        "parameters": [
+          { "name": "category",   "in": "query", "schema": { "type": "string", "enum": ["women", "men", "kid"] }, "description": "Filter by category" },
+          { "name": "search",     "in": "query", "schema": { "type": "string" }, "description": "Full-text search on name and description" },
+          { "name": "priceRange", "in": "query", "schema": { "type": "string", "enum": ["low", "medium", "high"] }, "description": "low = under 100, medium = 100–200, high = over 200" },
+          { "name": "sort",       "in": "query", "schema": { "type": "string", "enum": ["price-asc", "price-desc", "name-asc"] }, "description": "Sort order" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["products"],
+                  "properties": {
+                    "products": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid filter value", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/products/new-collections": {
+      "get": {
+        "operationId": "getNewCollections",
+        "summary": "Get products flagged as new collection",
+        "tags": ["Products"],
+        "responses": {
+          "200": {
+            "description": "New collection products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "products": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } }
+                }
+              }
+            }
+          },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/products/popular": {
+      "get": {
+        "operationId": "getPopularProducts",
+        "summary": "Get products flagged as popular",
+        "tags": ["Products"],
+        "responses": {
+          "200": {
+            "description": "Popular products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "products": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } }
+                }
+              }
+            }
+          },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "operationId": "getProductById",
+        "summary": "Get a single product by ID",
+        "tags": ["Products"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["product"],
+                  "properties": { "product": { "$ref": "#/components/schemas/Product" } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/products/{id}/reviews": {
+      "get": {
+        "operationId": "getProductReviews",
+        "summary": "Get reviews and aggregate rating for a product",
+        "tags": ["Reviews"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews and aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["reviews", "average_rating", "total_reviews"],
+                  "properties": {
+                    "reviews":        { "type": "array", "items": { "$ref": "#/components/schemas/Review" } },
+                    "average_rating": { "type": "number", "format": "float", "example": 4.2 },
+                    "total_reviews":  { "type": "integer", "example": 15 }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/wishlist": {
+      "get": {
+        "operationId": "getWishlist",
+        "summary": "Get the authenticated user's wishlist",
+        "tags": ["Wishlist"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Wishlist items with product details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["wishlist"],
+                  "properties": {
+                    "wishlist": { "type": "array", "items": { "$ref": "#/components/schemas/WishlistItem" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "operationId": "clearWishlist",
+        "summary": "Clear the entire wishlist (e.g. after checkout)",
+        "tags": ["Wishlist"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Wishlist cleared", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/wishlist/{productId}": {
+      "post": {
+        "operationId": "addToWishlist",
+        "summary": "Add a product to the wishlist (idempotent)",
+        "tags": ["Wishlist"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 5 }
+        ],
+        "responses": {
+          "200": { "description": "Added to wishlist", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "400": { "description": "Invalid productId", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      },
+      "delete": {
+        "operationId": "removeFromWishlist",
+        "summary": "Remove a product from the wishlist",
+        "tags": ["Wishlist"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "productId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 5 }
+        ],
+        "responses": {
+          "200": { "description": "Removed from wishlist", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "400": { "description": "Invalid productId", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Item not in wishlist", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/reviews": {
+      "post": {
+        "operationId": "submitReview",
+        "summary": "Submit or update a product review (one per user per product)",
+        "tags": ["Reviews"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "rating"],
+                "properties": {
+                  "productId": { "type": "integer", "example": 3 },
+                  "rating":    { "type": "integer", "minimum": 1, "maximum": 5, "example": 4 },
+                  "comment":   { "type": "string",  "example": "Great fit and quality!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review created or updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["review"],
+                  "properties": { "review": { "$ref": "#/components/schemas/Review" } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid productId or rating", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Product not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/reviews/{reviewId}": {
+      "delete": {
+        "operationId": "deleteReview",
+        "summary": "Delete the authenticated user's own review",
+        "tags": ["Reviews"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "reviewId", "in": "path", "required": true, "schema": { "type": "integer" }, "example": 7 }
+        ],
+        "responses": {
+          "200": { "description": "Review deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "400": { "description": "Invalid reviewId", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Not authenticated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "Review not found or not owned by you", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    }
+  }
+}

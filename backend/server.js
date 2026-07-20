@@ -5,11 +5,14 @@ const initDb = require('./initDb');
 const attachTraceId = require('./middleware/traceId');
 const { logger } = require('./logger');
 
-const authRouter = require('./routes/auth');
-const cartRouter = require('./routes/cart');
-const ordersRouter = require('./routes/orders');
-const logsRouter = require('./routes/logs');
-const eventsRouter = require('./routes/events');
+const authRouter     = require('./routes/auth');
+const cartRouter     = require('./routes/cart');
+const ordersRouter   = require('./routes/orders');
+const logsRouter     = require('./routes/logs');
+const eventsRouter   = require('./routes/events');
+const productsRouter = require('./routes/products');
+const wishlistRouter = require('./routes/wishlist');
+const reviewsRouter  = require('./routes/reviews');
 
 const app = express();
 
@@ -48,11 +51,14 @@ app.use((req, _res, next) => {
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRouter);
-app.use('/api/cart', cartRouter);
-app.use('/api/orders', ordersRouter);
+app.use('/api/auth',       authRouter);
+app.use('/api/cart',       cartRouter);
+app.use('/api/orders',     ordersRouter);
 app.use('/api/admin/logs', logsRouter);
-app.use('/api/events', eventsRouter);
+app.use('/api/events',     eventsRouter);
+app.use('/api/products',   productsRouter);
+app.use('/api/wishlist',   wishlistRouter);
+app.use('/api/reviews',    reviewsRouter);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 
