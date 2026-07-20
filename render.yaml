@@ -7,7 +7,7 @@ services:
     env: node
     plan: free
     rootDir: backend          # all build/start commands run from the backend/ folder
-    buildCommand: npm install
+    buildCommand: npm install && node seed.js
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
