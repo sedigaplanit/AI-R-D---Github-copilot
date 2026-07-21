@@ -15,6 +15,11 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "LogSecretAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Admin-only. Pass the LOG_SECRET env value as a Bearer token."
       }
     },
     "schemas": {
@@ -140,6 +145,57 @@
     }
   },
   "paths": {
+    "/api/admin/logs": {
+      "get": {
+        "operationId": "getAdminLogs",
+        "summary": "Retrieve server log file for a given date",
+        "description": "Admin-only endpoint protected by LOG_SECRET. Returns the raw Winston log file. Only available when LOG_SECRET is configured on the server.",
+        "tags": ["System"],
+        "security": [{ "LogSecretAuth": [] }],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "description": "Log date in YYYY-MM-DD format. Defaults to today.",
+            "example": "2026-07-21"
+          },
+          {
+            "name": "lines",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1 },
+            "description": "Return only the last N lines. Omit to return the full file.",
+            "example": 200
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log file content",
+            "content": {
+              "text/plain": {
+                "schema": { "type": "string", "example": "{\"level\":\"info\",\"message\":\"Server running\"}\n" }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date format",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Missing or incorrect LOG_SECRET",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "404": {
+            "description": "No log file found for that date",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "503": {
+            "description": "LOG_SECRET not configured on server",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "getHealth",
