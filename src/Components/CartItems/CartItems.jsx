@@ -8,7 +8,7 @@ import CheckoutModal from './CheckoutModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const CartItems = () => {
-    const { getTotalCartAmount, getTotalCartItems, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI } = useContext(ShopContext);
+    const { getTotalCartAmount, getTotalCartItems, all_product, cartItems, removeFromCart, updateCartItemCount, clearCart, clearCartOnAPI, loadCartFromAPI } = useContext(ShopContext);
     const { user } = useContext(AuthContext);
     const { clearWishlistItems } = useWishlist();
     const navigate = useNavigate();
@@ -16,6 +16,15 @@ const CartItems = () => {
     const location = useLocation();
     const total = getTotalCartAmount();
     const cartCount = getTotalCartItems();
+
+    // Re-sync cart from backend every time the cart page mounts.
+    // This ensures cart seeded via API (e.g. test beforeEach hooks) is reflected
+    // in the UI without requiring a full page reload.
+    useEffect(() => {
+        if (user) {
+            loadCartFromAPI();
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (location.state?.openCheckout) {

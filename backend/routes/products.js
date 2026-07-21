@@ -60,7 +60,8 @@ router.get('/', async (req, res) => {
 router.get('/new-collections', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, category, image_url, new_price, old_price, description
+      `SELECT id, name, category, image_url, new_price, old_price, description,
+              is_new_collection, is_popular
        FROM products WHERE is_new_collection = TRUE ORDER BY id`
     );
     res.json({ products: rows });
@@ -74,7 +75,8 @@ router.get('/new-collections', async (req, res) => {
 router.get('/popular', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, name, category, image_url, new_price, old_price, description
+      `SELECT id, name, category, image_url, new_price, old_price, description,
+              is_new_collection, is_popular
        FROM products WHERE is_popular = TRUE ORDER BY id`
     );
     res.json({ products: rows });

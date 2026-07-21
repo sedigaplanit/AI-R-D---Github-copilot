@@ -462,10 +462,17 @@
         },
         "responses": {
           "200": {
-            "description": "Cart saved",
+            "description": "Cart saved — returns the persisted cartItems for immediate client sync",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/MessageResponse" }
+                "schema": {
+                  "type": "object",
+                  "required": ["message", "cartItems"],
+                  "properties": {
+                    "message":   { "type": "string", "example": "Cart saved." },
+                    "cartItems": { "$ref": "#/components/schemas/CartItems" }
+                  }
+                }
               }
             }
           },

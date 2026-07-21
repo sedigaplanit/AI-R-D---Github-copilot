@@ -49,7 +49,8 @@ router.put('/', async (req, res) => {
       );
     }
     await client.query('COMMIT');
-    res.json({ message: 'Cart saved.' });
+    // Return the saved state so clients can sync local state immediately
+    res.json({ message: 'Cart saved.', cartItems });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(err);
