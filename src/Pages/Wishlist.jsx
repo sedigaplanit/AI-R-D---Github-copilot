@@ -1,13 +1,24 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWishlist } from '../Context/WishlistContext';
 import { ShopContext } from '../Context/ShopContext';
+import { AuthContext } from '../Context/AuthContext';
 import Item from '../Components/Item/Item';
 import './Css/Wishlist.css';
 
 const Wishlist = () => {
-  const { wishlist } = useWishlist();
+  const { wishlist, loadWishlistFromAPI } = useWishlist();
   const { all_product } = useContext(ShopContext);
+  const { user } = useContext(AuthContext);
+
+  // Re-fetch wishlist from backend every time this page mounts.
+  // Ensures wishlist seeded via POST /api/wishlist (e.g. test beforeEach)
+  // is visible without requiring a full page reload.
+  useEffect(() => {
+    if (user) {
+      loadWishlistFromAPI();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wishlistProducts = all_product.filter((p) => wishlist.includes(p.id));
 

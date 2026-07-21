@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { trackEvent } from '../utils/analytics';
+import api from '../api/apiClient';
 
 const WishlistContext = createContext();
 
@@ -31,8 +32,21 @@ export const WishlistProvider = ({ children }) => {
     });
   };
 
+  // Fetch wishlist from the API and sync local state.
+  // Called on /wishlist route mount to reflect server-side changes.
+  const loadWishlistFromAPI = async () => {
+    try {
+      const data = await api('/api/wishlist');
+      const ids = data.wishlist.map((item) => item.product_id);
+      setWishlist(ids);
+      localStorage.setItem('wishlist', JSON.stringify(ids));
+    } catch {
+      // Not logged in or network error — leave wishlist as-is
+    }
+  };
+
   return (
-    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isWishlisted, clearWishlistItems }}>
+    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isWishlisted, clearWishlistItems, loadWishlistFromAPI }}>
       {children}
     </WishlistContext.Provider>
   );
