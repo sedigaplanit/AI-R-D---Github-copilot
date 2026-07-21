@@ -84,6 +84,10 @@ router.post('/', async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     log.error(`[Trace: ${trace}] Order placement failed, transaction rolled back. Order: ${orderNumber}, User: ${maskUserId(req.user.id)} — ${err.message}`);
+    // PostgreSQL unique_violation code
+    if (err.code === '23505') {
+      return res.status(409).json({ message: 'Duplicate order number.' });
+    }
     res.status(500).json({ message: 'Server error.' });
   } finally {
     client.release();

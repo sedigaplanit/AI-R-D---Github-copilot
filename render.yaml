@@ -1,12 +1,16 @@
 # Render deployment config
 # Docs: https://render.com/docs/blueprint-spec
+#
+# Single source of truth for Render deployments.
+# Backend runs from the /backend subfolder.
+# build step: install deps + seed the DB (idempotent — safe on every deploy)
 
 services:
   - type: web
     name: onestyle-backend
     env: node
     plan: free
-    rootDir: backend          # all build/start commands run from the backend/ folder
+    rootDir: backend
     buildCommand: npm install && node seed.js
     startCommand: node server.js
     envVars:
@@ -17,6 +21,8 @@ services:
           name: onestyle-db
           property: connectionString
       - key: JWT_SECRET
+        generateValue: true
+      - key: LOG_SECRET
         generateValue: true
       - key: CLIENT_URL
         value: https://sedigaplanit.github.io
