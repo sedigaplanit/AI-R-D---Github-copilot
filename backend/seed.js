@@ -55,9 +55,12 @@ async function seed() {
   try {
     // Ensure all tables exist before inserting — critical when running during
     // the Render build step (before server.js has had a chance to call initDb).
+    console.log('[seed] Step 1: running initDb()...');
     await initDb();
+    console.log('[seed] Step 1: initDb() complete.');
 
     // ── Test user ────────────────────────────────────────────────────────────────
+    console.log('[seed] Step 2: seeding test user...');
     const testUser = { name: 'Test User', email: 'test@test.com', password: 'Test@123' };
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [testUser.email]);
     if (existing.length > 0) {
@@ -71,6 +74,7 @@ async function seed() {
     }
 
     // ── Products ─────────────────────────────────────────────────────────────────
+    console.log('[seed] Step 3: seeding products...');
     for (const p of products) {
       const { rows: existing } = await pool.query('SELECT id FROM products WHERE id = $1', [p.id]);
       if (existing.length > 0) {
@@ -92,7 +96,10 @@ async function seed() {
     await pool.query(`SELECT setval('products_id_seq', (SELECT MAX(id) FROM products))`);
     console.log(`Seeded ${products.length} products.`);
   } catch (err) {
-    console.error('Seed failed:', err.message);
+    console.error('=== SEED FAILED ===');
+    console.error(err.message);
+    console.error(err.stack);
+    process.exitCode = 1; // fail the Render build so the error is visible in logs
   } finally {
     await pool.end();
   }
