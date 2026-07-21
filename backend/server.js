@@ -13,6 +13,7 @@ const eventsRouter   = require('./routes/events');
 const productsRouter = require('./routes/products');
 const wishlistRouter = require('./routes/wishlist');
 const reviewsRouter  = require('./routes/reviews');
+const { seedDb }     = require('./seed');
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 const PORT = process.env.PORT || 5000;
 
 initDb()
+  .then(() => seedDb())
   .then(() => {
     app.listen(PORT, () =>
       logger.info({ component: 'app.server', message: `Server running on http://localhost:${PORT}` })

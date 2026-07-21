@@ -1,11 +1,13 @@
 // Seeds the default automation test user and all 36 products into the database.
-// Usage: node seed.js
-// NOTE: This script calls initDb() itself so it can be run standalone during
-//       the Render build step (before server.js / initDb are started).
+//
+// Two usage modes:
+//   1. node seed.js          — standalone (calls initDb + pool.end itself)
+//   2. require('./seed').seedDb() — called from server.js after initDb() runs
+//
 require('dotenv').config();
-const bcrypt  = require('bcryptjs');
-const pool    = require('./db');
-const initDb  = require('./initDb');
+const bcrypt = require('bcryptjs');
+const pool   = require('./db');
+const initDb = require('./initDb');
 
 // New collection IDs (from new_collections.js)
 const NEW_COLLECTION_IDS = new Set([2, 8, 12, 14, 15, 17, 28, 35]);
@@ -51,36 +53,36 @@ const products = [
   { id: 36, name: 'Chic Colourblocked Hoodie',                     category: 'kid',   image_url: 'product_36.png', new_price: 85.0,  old_price: 120.5, description: 'A chic hoodie for kids, featuring a stylish orange colourblock pattern.' },
 ];
 
-async function seed() {
+/**
+ * seedDb — insert missing products and test user.
+ * Safe to call every startup (idempotent). Does NOT close the pool.
+ * Called from server.js after initDb().
+ */
+async function seedDb() {
   try {
-    // Ensure all tables exist before inserting — critical when running during
-    // the Render build step (before server.js has had a chance to call initDb).
-    console.log('[seed] Step 1: running initDb()...');
-    await initDb();
-    console.log('[seed] Step 1: initDb() complete.');
-
-    // ── Test user ────────────────────────────────────────────────────────────────
-    console.log('[seed] Step 2: seeding test user...');
+    // ── Test user ──────────────────────────────────────────────────────────────
     const testUser = { name: 'Test User', email: 'test@test.com', password: 'Test@123' };
-    const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [testUser.email]);
-    if (existing.length > 0) {
-      console.log('Test user already exists — skipping.');
-    } else {
+    const { rows: existingUser } = await pool.query('SELECT id FROM users WHERE email = $1', [testUser.email]);
+    if (existingUser.length === 0) {
       const hash = await bcrypt.hash(testUser.password, 10);
       await pool.query('INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3)', [
         testUser.name, testUser.email, hash,
       ]);
-      console.log(`Seeded test user: ${testUser.email} / ${testUser.password}`);
+      console.log(`Seeded test user: ${testUser.email}`);
     }
 
-    // ── Products ─────────────────────────────────────────────────────────────────
-    console.log('[seed] Step 3: seeding products...');
+    // ── Products ───────────────────────────────────────────────────────────────
+    const { rows: countRows } = await pool.query('SELECT COUNT(*) FROM products');
+    if (parseInt(countRows[0].count, 10) === 36) {
+      console.log('Products already seeded — skipping.');
+      return;
+    }
+
     for (const p of products) {
       const { rows: existing } = await pool.query('SELECT id FROM products WHERE id = $1', [p.id]);
       if (existing.length > 0) {
-        // Update flags in case they changed
         await pool.query(
-          `UPDATE products SET is_new_collection=$1, is_popular=$2 WHERE id=$3`,
+          'UPDATE products SET is_new_collection=$1, is_popular=$2 WHERE id=$3',
           [NEW_COLLECTION_IDS.has(p.id), POPULAR_IDS.has(p.id), p.id]
         );
         continue;
@@ -92,18 +94,37 @@ async function seed() {
          NEW_COLLECTION_IDS.has(p.id), POPULAR_IDS.has(p.id)]
       );
     }
-    // Sync the sequence so future INSERTs don't collide
     await pool.query(`SELECT setval('products_id_seq', (SELECT MAX(id) FROM products))`);
     console.log(`Seeded ${products.length} products.`);
   } catch (err) {
+    // Log but never crash the server — seeding is best-effort on startup
+    console.error('seedDb error (non-fatal):', err.message);
+  }
+}
+
+/**
+ * Standalone entry point: node seed.js
+ * Calls initDb() first (tables may not exist yet), then seedDb(), then closes pool.
+ */
+async function seed() {
+  try {
+    console.log('[seed] Step 1: running initDb()...');
+    await initDb();
+    console.log('[seed] Step 2: seeding data...');
+    await seedDb();
+  } catch (err) {
     console.error('=== SEED FAILED ===');
     console.error(err.message);
-    console.error(err.stack);
-    process.exitCode = 1; // fail the Render build so the error is visible in logs
+    process.exitCode = 1;
   } finally {
     await pool.end();
   }
 }
 
-seed();
+module.exports = { seedDb };
+
+// Run when called directly: node seed.js
+if (require.main === module) {
+  seed();
+}
 
