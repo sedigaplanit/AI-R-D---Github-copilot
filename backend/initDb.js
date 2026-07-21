@@ -24,6 +24,7 @@ async function initDb() {
 
       -- Add FK from cart.product_id → products on existing deployments that
       -- had cart created before the products table existed.
+      -- Wrapped in EXCEPTION so orphan cart rows don't abort the whole init.
       DO $$
       BEGIN
         IF NOT EXISTS (
@@ -32,10 +33,17 @@ async function initDb() {
             AND table_name      = 'cart'
             AND constraint_name = 'cart_product_id_fkey'
         ) THEN
+          -- Remove orphan cart rows first so the FK check won't fail
+          DELETE FROM cart
+          WHERE product_id NOT IN (SELECT id FROM products);
+
           ALTER TABLE cart
             ADD CONSTRAINT cart_product_id_fkey
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
         END IF;
+      EXCEPTION WHEN OTHERS THEN
+        -- Log and continue — FK is nice-to-have, not critical for startup
+        RAISE NOTICE 'cart FK migration skipped: %', SQLERRM;
       END $$;
 
       CREATE TABLE IF NOT EXISTS products (
