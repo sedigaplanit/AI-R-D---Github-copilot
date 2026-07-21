@@ -22,6 +22,22 @@ async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile  VARCHAR(20);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS address TEXT;
 
+      -- Add FK from cart.product_id → products on existing deployments that
+      -- had cart created before the products table existed.
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE constraint_type = 'FOREIGN KEY'
+            AND table_name      = 'cart'
+            AND constraint_name = 'cart_product_id_fkey'
+        ) THEN
+          ALTER TABLE cart
+            ADD CONSTRAINT cart_product_id_fkey
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+
       CREATE TABLE IF NOT EXISTS products (
         id                SERIAL PRIMARY KEY,
         name              VARCHAR(255)   NOT NULL,
