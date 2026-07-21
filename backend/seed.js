@@ -1,8 +1,11 @@
 // Seeds the default automation test user and all 36 products into the database.
 // Usage: node seed.js
+// NOTE: This script calls initDb() itself so it can be run standalone during
+//       the Render build step (before server.js / initDb are started).
 require('dotenv').config();
-const bcrypt = require('bcryptjs');
-const pool = require('./db');
+const bcrypt  = require('bcryptjs');
+const pool    = require('./db');
+const initDb  = require('./initDb');
 
 // New collection IDs (from new_collections.js)
 const NEW_COLLECTION_IDS = new Set([2, 8, 12, 14, 15, 17, 28, 35]);
@@ -50,6 +53,10 @@ const products = [
 
 async function seed() {
   try {
+    // Ensure all tables exist before inserting — critical when running during
+    // the Render build step (before server.js has had a chance to call initDb).
+    await initDb();
+
     // ── Test user ────────────────────────────────────────────────────────────────
     const testUser = { name: 'Test User', email: 'test@test.com', password: 'Test@123' };
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [testUser.email]);
