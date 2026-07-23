@@ -91,7 +91,7 @@ const Navbar = () => {
           </>
         ) : (
           <Link to="/login">
-            <button>Login</button>
+            <button>Sign In</button>
           </Link>
         )}
         <Link to="/wishlist" className="nav-wishlist-link">
