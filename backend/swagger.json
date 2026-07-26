@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "OneStyle API",
-    "description": "Express + PostgreSQL backend for OneStyle e-commerce app",
-    "version": "1.0.0"
+    "description": "Express + PostgreSQL backend for OneStyle e-commerce app.\n\n**Storage architecture (v1.1):** Cart and Wishlist data are now stored exclusively on the server for authenticated users. The React frontend no longer persists these in `localStorage`. Every cart mutation and wishlist toggle immediately calls the relevant API endpoint, keeping client and server in sync.",
+    "version": "1.1.0"
   },
   "servers": [
     { "url": "http://localhost:5000", "description": "Local dev" },
@@ -444,6 +444,7 @@
       "put": {
         "operationId": "saveCart",
         "summary": "Replace the entire cart (full sync)",
+        "description": "Replaces the user's cart with the provided snapshot. Called on every cart mutation (add to cart, remove, quantity update) so the server is always current. Also called on logout to persist the final state.",
         "tags": ["Cart"],
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
@@ -785,6 +786,7 @@
       "get": {
         "operationId": "getWishlist",
         "summary": "Get the authenticated user's wishlist",
+        "description": "Returns all wishlisted products with full product details. Called on Wishlist page mount and immediately after login to hydrate client state.",
         "tags": ["Wishlist"],
         "security": [{ "BearerAuth": [] }],
         "responses": {
@@ -808,7 +810,8 @@
       },
       "delete": {
         "operationId": "clearWishlist",
-        "summary": "Clear the entire wishlist (e.g. after checkout)",
+        "summary": "Clear the entire wishlist",
+        "description": "Deletes every item from the user's wishlist in one call. Available but not used by the current frontend — individual items are removed via `DELETE /api/wishlist/{productId}` after checkout.",
         "tags": ["Wishlist"],
         "security": [{ "BearerAuth": [] }],
         "responses": {
@@ -822,6 +825,7 @@
       "post": {
         "operationId": "addToWishlist",
         "summary": "Add a product to the wishlist (idempotent)",
+        "description": "Called immediately when the user toggles the heart icon on any product card or detail page. Idempotent — re-adding an already-wishlisted item returns 200 without error.",
         "tags": ["Wishlist"],
         "security": [{ "BearerAuth": [] }],
         "parameters": [
@@ -838,6 +842,7 @@
       "delete": {
         "operationId": "removeFromWishlist",
         "summary": "Remove a product from the wishlist",
+        "description": "Called immediately when the user untoggle the heart icon, and for each purchased product after a successful checkout (to remove bought items from the wishlist).",
         "tags": ["Wishlist"],
         "security": [{ "BearerAuth": [] }],
         "parameters": [

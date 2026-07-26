@@ -17,9 +17,9 @@ const CartItems = () => {
     const total = getTotalCartAmount();
     const cartCount = getTotalCartItems();
 
-    // Re-sync cart from backend every time the cart page mounts.
-    // This ensures cart seeded via API (e.g. test beforeEach hooks) is reflected
-    // in the UI without requiring a full page reload.
+    // Re-sync cart from the server every time the cart page mounts.
+    // Cart mutations (addToCart etc.) already sync immediately, so a simple
+    // GET here is sufficient to catch any server-side changes (other devices, test hooks).
     useEffect(() => {
         if (user) {
             loadCartFromAPI();

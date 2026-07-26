@@ -1,7 +1,8 @@
-import React, { createContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import all_product from '../Components/Assets/all_product';
 import api from '../api/apiClient';
 import { trackEvent } from '../utils/analytics';
+import { AuthContext } from './AuthContext';
 
 export const ShopContext = createContext(null);
 
@@ -14,26 +15,31 @@ const getDefaultCart = () => {
 }
 
 const ShopContextProvider = (props) => {
-    const [cartItems, setCartItems] = useState(() => {
-        const saved = localStorage.getItem('cartItems');
-        return saved ? JSON.parse(saved) : getDefaultCart();
+    // Cart lives entirely on the server for logged-in users; in-memory only for guests.
+    const [cartItems, setCartItems] = useState(getDefaultCart);
+
+    const { user } = useContext(AuthContext);
+
+    // Restore selected sizes from localStorage — the server does not track size
+    // selections, so this remains a local UI preference.
+    const [selectedSizes, setSelectedSizes] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('selectedSizes')) || {};
+        } catch {
+            return {};
+        }
     });
 
-    const [selectedSizes, setSelectedSizes] = useState(() => {
-        const savedSizes = localStorage.getItem('selectedSizes');
-        const savedCart  = localStorage.getItem('cartItems');
-        if (!savedSizes) return {};
-        const sizes = JSON.parse(savedSizes);
-        const cart  = savedCart ? JSON.parse(savedCart) : {};
-        // Only restore sizes for products that are actually in the cart
-        const filtered = {};
-        Object.keys(sizes).forEach((id) => {
-            if (cart[id] > 0) filtered[id] = sizes[id];
-        });
-        // Write the cleaned result back so stale entries don't accumulate
-        localStorage.setItem('selectedSizes', JSON.stringify(filtered));
-        return filtered;
-    });
+    // On mount (or when user is already logged in from a page refresh), hydrate
+    // the cart from the server so the navbar count and product pages are correct.
+    useEffect(() => {
+        if (user) {
+            loadCartFromAPI();
+        } else {
+            // Guest — reset to empty in-memory cart
+            setCartItems(getDefaultCart());
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const clearProductSize = (itemId) => {
         setSelectedSizes((prev) => {
@@ -52,33 +58,33 @@ const ShopContextProvider = (props) => {
         });
     };
 
+    // Helper: persist the given cart object to the server (fire-and-forget).
+    const syncCartToServer = (cart) => {
+        if (!user) return;
+        api('/api/cart', { method: 'PUT', body: { cartItems: cart } }).catch(() => {});
+    };
+
     const addToCart = (itemId, qty = 1) => {
         trackEvent('CART_ADD', { productId: itemId, meta: { qty } });
-        setCartItems((prev) => {
-            const updated = { ...prev, [itemId]: prev[itemId] + qty };
-            localStorage.setItem('cartItems', JSON.stringify(updated));
-            return updated;
-        });
+        const updated = { ...cartItems, [itemId]: (cartItems[itemId] || 0) + qty };
+        setCartItems(updated);
+        syncCartToServer(updated);
     };
 
     const removeFromCart = (itemId) => {
         trackEvent('CART_REMOVE', { productId: itemId, meta: { qty: 1 } });
-        setCartItems((prev) => {
-            const newQty = Math.max(0, prev[itemId] - 1);
-            const updated = { ...prev, [itemId]: newQty };
-            localStorage.setItem('cartItems', JSON.stringify(updated));
-            if (newQty === 0) clearProductSize(itemId);
-            return updated;
-        });
+        const newQty = Math.max(0, (cartItems[itemId] || 1) - 1);
+        const updated = { ...cartItems, [itemId]: newQty };
+        setCartItems(updated);
+        if (newQty === 0) clearProductSize(itemId);
+        syncCartToServer(updated);
     };
 
     const updateCartItemCount = (itemId, count) => {
-        setCartItems((prev) => {
-            const updated = { ...prev, [itemId]: count };
-            localStorage.setItem('cartItems', JSON.stringify(updated));
-            if (count === 0) clearProductSize(itemId);
-            return updated;
-        });
+        const updated = { ...cartItems, [itemId]: count };
+        setCartItems(updated);
+        if (count === 0) clearProductSize(itemId);
+        syncCartToServer(updated);
     };
 
     const getTotalCartAmount = () => {
@@ -103,9 +109,7 @@ const ShopContextProvider = (props) => {
     };
 
     const clearCart = () => {
-        const empty = getDefaultCart();
-        setCartItems(empty);
-        localStorage.removeItem('cartItems');
+        setCartItems(getDefaultCart());
     };
 
     // Load the logged-in user's cart from the API and set it as the active cart
@@ -114,7 +118,6 @@ const ShopContextProvider = (props) => {
             const data = await api('/api/cart');
             const cart = { ...getDefaultCart(), ...data.cartItems };
             setCartItems(cart);
-            localStorage.setItem('cartItems', JSON.stringify(cart));
         } catch {
             // Not logged in or network error — leave cart as-is
         }
