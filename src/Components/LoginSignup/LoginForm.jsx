@@ -5,12 +5,14 @@ import { AuthContext } from "../../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../../Context/ToastContext";
 import { ShopContext } from "../../Context/ShopContext";
+import { useWishlist } from "../../Context/WishlistContext";
 import api from "../../api/apiClient";
 import "./Css/LoginSignup.css";
 
 const LoginForm = () => {
   const { login } = useContext(AuthContext);
   const { loadCartFromAPI } = useContext(ShopContext);
+  const { loadWishlistFromAPI } = useWishlist();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [error, setError] = useState("");
@@ -31,7 +33,7 @@ const LoginForm = () => {
           body: { email: values.email, password: values.password },
         });
         login(data.user, data.token);
-        await loadCartFromAPI();
+        await Promise.all([loadCartFromAPI(), loadWishlistFromAPI()]);
         showToast(`Welcome back, ${data.user.name}!`);
         navigate("/");
       } catch (err) {

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { trackEvent } from '../utils/analytics';
 import api from '../api/apiClient';
+import { AuthContext } from './AuthContext';
 
 const WishlistContext = createContext();
 
@@ -10,26 +11,38 @@ export const WishlistProvider = ({ children }) => {
     catch { return []; }
   });
 
+  const { user } = useContext(AuthContext);
+
   const toggleWishlist = (productId) => {
-    setWishlist((prev) => {
-      const removing = prev.includes(productId);
-      trackEvent(removing ? 'WISHLIST_REMOVE' : 'WISHLIST_ADD', { productId });
-      const next = removing
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId];
-      localStorage.setItem('wishlist', JSON.stringify(next));
-      return next;
-    });
+    const removing = wishlist.includes(productId);
+    trackEvent(removing ? 'WISHLIST_REMOVE' : 'WISHLIST_ADD', { productId });
+    const next = removing
+      ? wishlist.filter((id) => id !== productId)
+      : [...wishlist, productId];
+    setWishlist(next);
+    localStorage.setItem('wishlist', JSON.stringify(next));
+    // Sync to backend so loadWishlistFromAPI stays consistent
+    if (user) {
+      if (removing) {
+        api(`/api/wishlist/${productId}`, { method: 'DELETE' }).catch(() => {});
+      } else {
+        api(`/api/wishlist/${productId}`, { method: 'POST' }).catch(() => {});
+      }
+    }
   };
 
   const isWishlisted = (productId) => wishlist.includes(productId);
 
   const clearWishlistItems = (productIds) => {
-    setWishlist((prev) => {
-      const next = prev.filter((id) => !productIds.includes(id));
-      localStorage.setItem('wishlist', JSON.stringify(next));
-      return next;
-    });
+    const next = wishlist.filter((id) => !productIds.includes(id));
+    setWishlist(next);
+    localStorage.setItem('wishlist', JSON.stringify(next));
+    // Sync removals to backend so wishlist stays consistent after checkout
+    if (user) {
+      productIds.forEach((id) => {
+        api(`/api/wishlist/${id}`, { method: 'DELETE' }).catch(() => {});
+      });
+    }
   };
 
   // Fetch wishlist from the API and sync local state.
