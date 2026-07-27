@@ -1,7 +1,7 @@
 'use strict';
 const router = require('express').Router();
 const crypto = require('crypto');
-const { logger, maskUserId } = require('../logger');
+const { logger, maskUserId, formatSessionId } = require('../logger');
 
 const log = logger.child({ component: 'app.routes.events' });
 
@@ -36,7 +36,7 @@ router.post('/', (req, res) => {
   // Sanitise inputs — only allow safe scalar values
   const trace  = `evt_${crypto.randomBytes(6).toString('hex')}`;
   const user   = userId   ? maskUserId(Number(userId)) : 'anonymous';
-  const sess   = sessionId ? `sess_${String(sessionId).replace(/[^a-z0-9]/gi, '').slice(0, 10)}` : 'sess_unknown';
+  const sess   = formatSessionId(sessionId);
 
   let message = `[Trace: ${trace}] ${event} — User: ${user}, Session: ${sess}`;
   if (page)        message += `, Page: ${String(page).slice(0, 100)}`;

@@ -29,6 +29,16 @@ const maskUserId = (id) => {
   return 'usr_' + '*'.repeat(Math.max(0, s.length - 2)) + s.slice(-2);
 };
 
+/**
+ * sess_abc123def0 — sanitizes and truncates a client-supplied session id.
+ * Shared by every route that logs a session, so the same input always
+ * produces the same token and journeys stay joinable across log lines.
+ */
+const formatSessionId = (sessionId) => {
+  if (!sessionId) return 'sess_unknown';
+  return `sess_${String(sessionId).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`;
+};
+
 // ── Log line format ────────────────────────────────────────────────────────────
 // Matches the production log shape shown in the brief:
 //   2026-07-15 10:30:01.102 INFO  [api-1] app.routes.auth               - [Trace: ...]
@@ -65,4 +75,4 @@ const logger = createLogger({
   ],
 });
 
-module.exports = { logger, maskEmail, maskName, maskUserId };
+module.exports = { logger, maskEmail, maskName, maskUserId, formatSessionId };
