@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './CheckoutModal.css';
 import api from '../../api/apiClient';
+import { getSessionId } from '../../utils/analytics';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../Context/ToastContext';
 
@@ -62,7 +63,7 @@ const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
       try {
         await api('/api/orders', {
           method: 'POST',
-          body: { id: orderNumber, date: new Date().toISOString(), items, total },
+          body: { id: orderNumber, date: new Date().toISOString(), items, total, sessionId: getSessionId() },
         });
       } catch (err) {
         console.error('Failed to save order:', err.message);

@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const pool = require('../db');
 const requireAuth = require('../middleware/requireAuth');
-const { logger, maskUserId } = require('../logger');
+const { logger, maskUserId, formatSessionId } = require('../logger');
 
 const log = logger.child({ component: 'app.routes.orders' });
 
@@ -48,18 +48,19 @@ router.get('/', async (req, res) => {
 
 // ── POST /api/orders ───────────────────────────────────────────────────────────
 router.post('/', async (req, res) => {
-  const { id: orderNumber, date, total, items } = req.body;
+  const { id: orderNumber, date, total, items, sessionId } = req.body;
   if (!orderNumber || !total || !Array.isArray(items) || items.length === 0)
     return res.status(400).json({ message: 'Invalid order data.' });
 
   const trace = `ord_${req.traceId}`;
-  log.info(`[Trace: ${trace}] Incoming Order Request. User: ${maskUserId(req.user.id)}, Method: POST, URL: /api/orders`);
-  log.info(`[Trace: ${trace}] Validating order payload. Order: ${orderNumber}, Items: ${items.length}, Total: $${parseFloat(total).toFixed(2)}`);
+  const sess = formatSessionId(sessionId);
+  log.info(`[Trace: ${trace}] Incoming Order Request. User: ${maskUserId(req.user.id)}, Session: ${sess}, Method: POST, URL: /api/orders`);
+  log.info(`[Trace: ${trace}] Validating order payload. Order: ${orderNumber}, Session: ${sess}, Items: ${items.length}, Total: $${parseFloat(total).toFixed(2)}`);
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    log.info(`[Trace: ${trace}] DB transaction initiated. Inserting order record.`);
+    log.info(`[Trace: ${trace}] DB transaction initiated. Inserting order record. Session: ${sess}`);
 
     const { rows } = await client.query(
       'INSERT INTO orders (order_number, user_id, total, created_at) VALUES ($1, $2, $3, $4) RETURNING id',
@@ -76,14 +77,14 @@ router.post('/', async (req, res) => {
       `INSERT INTO order_items (order_id, product_id, product_name, product_image, price, quantity) VALUES ${placeholders}`,
       values
     );
-    log.info(`[Trace: ${trace}] Order items persisted. ${items.length} line item(s) inserted.`);
+    log.info(`[Trace: ${trace}] Order items persisted. ${items.length} line item(s) inserted. Session: ${sess}`);
 
     await client.query('COMMIT');
-    log.info(`[Trace: ${trace}] Order committed successfully. Order: ${orderNumber}, User: ${maskUserId(req.user.id)}.`);
+    log.info(`[Trace: ${trace}] Order committed successfully. Order: ${orderNumber}, Session: ${sess}, User: ${maskUserId(req.user.id)}.`);
     res.status(201).json({ message: 'Order saved.', orderId });
   } catch (err) {
     await client.query('ROLLBACK');
-    log.error(`[Trace: ${trace}] Order placement failed, transaction rolled back. Order: ${orderNumber}, User: ${maskUserId(req.user.id)} — ${err.message}`);
+    log.error(`[Trace: ${trace}] Order placement failed, transaction rolled back. Order: ${orderNumber}, Session: ${sess}, User: ${maskUserId(req.user.id)} — ${err.message}`);
     // PostgreSQL unique_violation code
     if (err.code === '23505') {
       return res.status(409).json({ message: 'Duplicate order number.' });

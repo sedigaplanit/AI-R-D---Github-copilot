@@ -1,7 +1,7 @@
 const BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 /** Stable random ID for this browser tab session */
-const getSessionId = () => {
+export const getSessionId = () => {
   let id = sessionStorage.getItem('_analytics_session');
   if (!id) {
     id = Math.random().toString(36).slice(2, 12);
