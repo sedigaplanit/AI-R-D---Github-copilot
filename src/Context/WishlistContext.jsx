@@ -61,7 +61,6 @@ export const WishlistProvider = ({ children }) => {
     } catch {
       // Not logged in or network error — leave wishlist as-is
     }
-    }
   };
 
   return (
