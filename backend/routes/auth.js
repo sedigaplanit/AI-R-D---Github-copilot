@@ -99,8 +99,7 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
-// ── PUT /api/auth/profile ──────────────────────────────────────────────────────
-router.put('/profile', requireAuth, async (req, res) => {
+// ── PUT /api/auth/profile ──────────────────────────────────────────────────────router.put('/profile', requireAuth, async (req, res) => {
   const { name, gender, mobile, address } = req.body;
   if (!name || name.trim().length < 3)
     return res.status(400).json({ message: 'Name must be at least 3 characters.' });
@@ -118,6 +117,36 @@ router.put('/profile', requireAuth, async (req, res) => {
     res.json({ user, token: sign(user) });
   } catch (err) {
     log.error(`[Trace: ${trace}] Profile update failed. User: ${maskUserId(req.user.id)} — ${err.message}`);
+    res.status(500).json({ message: 'Server error.' });
+  }
+});
+
+// ── DELETE /api/auth/account ───────────────────────────────────────────────────
+// Permanently deletes the authenticated user and all their data (orders, cart,
+// wishlist, reviews cascade via FK ON DELETE CASCADE).
+router.delete('/account', requireAuth, async (req, res) => {
+  const { password } = req.body;
+  if (!password)
+    return res.status(400).json({ message: 'Password is required to confirm deletion.' });
+
+  const trace = `auth_${req.traceId}`;
+  log.info(`[Trace: ${trace}] Account deletion request. User: ${maskUserId(req.user.id)}`);
+
+  try {
+    const { rows } = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found.' });
+
+    const match = await bcrypt.compare(password, rows[0].password_hash);
+    if (!match) {
+      log.warn(`[Trace: ${trace}] Account deletion rejected — incorrect password. User: ${maskUserId(req.user.id)}`);
+      return res.status(401).json({ message: 'Incorrect password.' });
+    }
+
+    await pool.query('DELETE FROM users WHERE id = $1', [req.user.id]);
+    log.info(`[Trace: ${trace}] Account permanently deleted. User: ${maskUserId(req.user.id)}`);
+    res.json({ message: 'Account deleted.' });
+  } catch (err) {
+    log.error(`[Trace: ${trace}] Account deletion failed. User: ${maskUserId(req.user.id)} — ${err.message}`);
     res.status(500).json({ message: 'Server error.' });
   }
 });

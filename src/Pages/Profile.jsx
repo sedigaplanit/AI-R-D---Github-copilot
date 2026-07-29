@@ -1,12 +1,14 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../Context/AuthContext';
 import { useToast } from '../Context/ToastContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/apiClient';
 import './Css/Profile.css';
 
 const Profile = () => {
-  const { user, updateUser } = useContext(AuthContext);
+  const { user, updateUser, logout } = useContext(AuthContext);
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name:    user?.name    || '',
@@ -15,6 +17,11 @@ const Profile = () => {
     address: user?.address || '',
   });
   const [saving, setSaving] = useState(false);
+
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Fetch fresh profile data from DB on mount (fixes stale JWT / old accounts)
   useEffect(() => {
@@ -38,6 +45,24 @@ const Profile = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      showToast('Please enter your password to confirm.', 'error');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api('/api/auth/account', { method: 'DELETE', body: { password: deletePassword } });
+      showToast('Your account has been deleted.');
+      await logout();
+      navigate('/');
+    } catch (err) {
+      showToast(err.message || 'Failed to delete account.', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -102,7 +127,43 @@ const Profile = () => {
           </button>
         </form>
         )}
+
+        {/* Danger Zone */}
+        <div className="profile-danger-zone">
+          <h3>Danger Zone</h3>
+          <p>Permanently delete your account and all associated data. This cannot be undone.</p>
+          <button className="profile-delete-btn" onClick={() => setShowDeleteModal(true)}>
+            Delete Account
+          </button>
+        </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className="delete-modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Delete Account</h2>
+            <p>This will permanently delete your account, orders, cart, wishlist and reviews. Enter your password to confirm.</p>
+            <input
+              type="password"
+              className="delete-modal-input"
+              placeholder="Enter your password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleDeleteAccount()}
+              autoFocus
+            />
+            <div className="delete-modal-actions">
+              <button className="delete-modal-cancel" onClick={() => { setShowDeleteModal(false); setDeletePassword(''); }}>
+                Cancel
+              </button>
+              <button className="delete-modal-confirm" onClick={handleDeleteAccount} disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Yes, delete my account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

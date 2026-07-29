@@ -104,3 +104,124 @@
 
 .profile-container button[type="submit"]:hover { background: #e63a3a; }
 .profile-container button[type="submit"]:disabled { background: #ccc; cursor: not-allowed; }
+
+/* Danger Zone */
+.profile-danger-zone {
+  margin-top: 36px;
+  border-top: 1px solid #ffd0d0;
+  padding-top: 24px;
+}
+
+.profile-danger-zone h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 6px;
+}
+
+.profile-danger-zone p {
+  font-size: 13px;
+  color: #777;
+  margin-bottom: 14px;
+}
+
+.profile-delete-btn {
+  padding: 10px 20px;
+  background: transparent;
+  color: #c0392b;
+  border: 1.5px solid #c0392b;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.profile-delete-btn:hover {
+  background: #c0392b;
+  color: #fff;
+}
+
+/* Delete confirmation modal */
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.delete-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px 36px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+
+.delete-modal h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 10px;
+}
+
+.delete-modal p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+.delete-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.delete-modal-input:focus {
+  outline: none;
+  border-color: #c0392b;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.delete-modal-cancel {
+  padding: 10px 20px;
+  background: #f2f2f2;
+  color: #444;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-modal-cancel:hover { background: #e0e0e0; }
+
+.delete-modal-confirm {
+  padding: 10px 20px;
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.delete-modal-confirm:hover { background: #a93226; }
+.delete-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }

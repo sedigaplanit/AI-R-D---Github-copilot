@@ -410,6 +410,36 @@
         }
       }
     },
+    "/api/auth/account": {
+      "delete": {
+        "operationId": "deleteAccount",
+        "summary": "Permanently delete the authenticated user's account",
+        "description": "Requires password confirmation. Deletes the user row and all associated data (orders, cart, wishlist, reviews) via database CASCADE. The client must discard its JWT after a successful response.",
+        "tags": ["Auth"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["password"],
+                "properties": {
+                  "password": { "type": "string", "example": "SecurePass1!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Account deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "400": { "description": "Password not provided", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Not authenticated or incorrect password", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "404": { "description": "User not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "500": { "description": "Internal server error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
     "/api/cart": {
       "get": {
         "operationId": "getCart",
@@ -811,7 +841,7 @@
       "delete": {
         "operationId": "clearWishlist",
         "summary": "Clear the entire wishlist",
-        "description": "Deletes every item from the user's wishlist in one call. Available but not used by the current frontend — individual items are removed via `DELETE /api/wishlist/{productId}` after checkout.",
+        "description": "Deletes every item from the user's wishlist in one call. Called by the frontend after checkout to clear the wishlist in a single request.",
         "tags": ["Wishlist"],
         "security": [{ "BearerAuth": [] }],
         "responses": {
