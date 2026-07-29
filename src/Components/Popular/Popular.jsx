@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './Popular.css'
 import api from '../../api/apiClient'
+import resolveImage from '../Assets/resolveImage'
 import Item from '../Item/Item'
 
 
@@ -9,7 +10,7 @@ const Popular = () => {
 
   useEffect(() => {
     api('/api/products/popular')
-      .then(d => setProducts(d.products.map(p => ({ ...p, image: p.image_url }))))
+      .then(d => setProducts(d.products.map(p => ({ ...p, image: resolveImage(p.image_url) }))))
       .catch(() => {});
   }, []);
 

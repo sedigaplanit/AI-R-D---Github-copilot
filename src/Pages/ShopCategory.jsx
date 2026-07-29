@@ -3,6 +3,7 @@ import './Css/ShopCategory.css';
 import Item from '../Components/Item/Item';
 import SearchFilter from '../Components/SearchFilter/SearchFilter';
 import api from '../api/apiClient';
+import resolveImage from '../Components/Assets/resolveImage';
 
 const ShopCategory = (props) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +20,7 @@ const ShopCategory = (props) => {
       if (priceRange) params.set('priceRange', priceRange);
       if (sortOrder) params.set('sort', sortOrder);
       api(`/api/products?${params.toString()}`)
-        .then(d => setFilteredProducts(d.products.map(p => ({ ...p, image: p.image_url }))))
+        .then(d => setFilteredProducts(d.products.map(p => ({ ...p, image: resolveImage(p.image_url) }))))
         .catch(() => {});
     }, 300);
     return () => clearTimeout(debounceRef.current);

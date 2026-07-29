@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { trackEvent } from '../utils/analytics';
 import api from '../api/apiClient';
 import { AuthContext } from './AuthContext';
+import resolveImage from '../Components/Assets/resolveImage';
 
 const WishlistContext = createContext();
 
@@ -56,7 +57,7 @@ export const WishlistProvider = ({ children }) => {
       setWishlistItems(data.wishlist.map(item => ({
         ...item,
         id: item.product_id,
-        image: item.image_url,
+        image: resolveImage(item.image_url),
       })));
     } catch {
       // Not logged in or network error — leave wishlist as-is

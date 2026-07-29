@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from '../api/apiClient';
+import resolveImage from '../Components/Assets/resolveImage';
 import { trackEvent } from '../utils/analytics';
 import { AuthContext } from './AuthContext';
 
@@ -17,7 +18,7 @@ const ShopContextProvider = (props) => {
     // Fetch full product catalogue from API once on mount.
     useEffect(() => {
         api('/api/products')
-            .then(d => setAllProducts(d.products.map(p => ({ ...p, image: p.image_url }))))
+            .then(d => setAllProducts(d.products.map(p => ({ ...p, image: resolveImage(p.image_url) }))))
             .catch(() => {});
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

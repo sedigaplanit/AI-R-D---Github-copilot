@@ -4,6 +4,7 @@ import Breadcrump from '../Components/Breadcrump/Breadcrump';
 import ProductDisplay from '../Components/ProductDisplay/ProductDisplay';
 import { trackEvent } from '../utils/analytics';
 import api from '../api/apiClient';
+import resolveImage from '../Components/Assets/resolveImage';
 
 const Product = () => {
   const { productId } = useParams();
@@ -15,7 +16,7 @@ const Product = () => {
     setNotFound(false);
     api(`/api/products/${productId}`)
       .then(d => {
-        const p = { ...d.product, image: d.product.image_url };
+        const p = { ...d.product, image: resolveImage(d.product.image_url) };
         setProduct(p);
         trackEvent('PRODUCT_VIEW', {
           productId: p.id,
