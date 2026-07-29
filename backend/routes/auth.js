@@ -99,7 +99,8 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
-// ── PUT /api/auth/profile ──────────────────────────────────────────────────────router.put('/profile', requireAuth, async (req, res) => {
+// ── PUT /api/auth/profile ────────────────────────────────────────────────────
+router.put('/profile', requireAuth, async (req, res) => {
   const { name, gender, mobile, address } = req.body;
   if (!name || name.trim().length < 3)
     return res.status(400).json({ message: 'Name must be at least 3 characters.' });
