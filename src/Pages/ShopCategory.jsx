@@ -1,34 +1,29 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Css/ShopCategory.css';
-import { ShopContext } from '../Context/ShopContext';
 import Item from '../Components/Item/Item';
 import SearchFilter from '../Components/SearchFilter/SearchFilter';
+import api from '../api/apiClient';
 
 const ShopCategory = (props) => {
-  const { all_product } = useContext(ShopContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [sortOrder, setSortOrder] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
-    let result = all_product.filter((product) => {
-      const inCategory = product.category === props.category;
-      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesPrice =
-        priceRange === '' ||
-        (priceRange === 'low'    && product.new_price < 100) ||
-        (priceRange === 'medium' && product.new_price >= 100 && product.new_price <= 200) ||
-        (priceRange === 'high'   && product.new_price > 200);
-      return inCategory && matchesSearch && matchesPrice;
-    });
-
-    if (sortOrder === 'price-asc')  result = [...result].sort((a, b) => a.new_price - b.new_price);
-    if (sortOrder === 'price-desc') result = [...result].sort((a, b) => b.new_price - a.new_price);
-    if (sortOrder === 'name-asc')   result = [...result].sort((a, b) => a.name.localeCompare(b.name));
-
-    setFilteredProducts(result);
-  }, [searchTerm, priceRange, sortOrder, all_product, props.category]);
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const params = new URLSearchParams({ category: props.category });
+      if (searchTerm) params.set('search', searchTerm);
+      if (priceRange) params.set('priceRange', priceRange);
+      if (sortOrder) params.set('sort', sortOrder);
+      api(`/api/products?${params.toString()}`)
+        .then(d => setFilteredProducts(d.products.map(p => ({ ...p, image: p.image_url }))))
+        .catch(() => {});
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchTerm, priceRange, sortOrder, props.category]);
 
   return (
     <div className='shop-category'>

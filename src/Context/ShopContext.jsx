@@ -1,24 +1,25 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import all_product from '../Components/Assets/all_product';
 import api from '../api/apiClient';
 import { trackEvent } from '../utils/analytics';
 import { AuthContext } from './AuthContext';
 
 export const ShopContext = createContext(null);
 
-const getDefaultCart = () => {
-    let cart = {};
-    for (let index = 0; index < all_product.length+1; index++) {
-        cart[index] = 0;
-    }
-    return cart;
-}
+const getDefaultCart = () => ({});
 
 const ShopContextProvider = (props) => {
     // Cart lives entirely on the server for logged-in users; in-memory only for guests.
     const [cartItems, setCartItems] = useState(getDefaultCart);
+    const [allProducts, setAllProducts] = useState([]);
 
     const { user } = useContext(AuthContext);
+
+    // Fetch full product catalogue from API once on mount.
+    useEffect(() => {
+        api('/api/products')
+            .then(d => setAllProducts(d.products.map(p => ({ ...p, image: p.image_url }))))
+            .catch(() => {});
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Restore selected sizes from localStorage — the server does not track size
     // selections, so this remains a local UI preference.
@@ -91,8 +92,8 @@ const ShopContextProvider = (props) => {
         let totalAmount = 0;
         for (const item in cartItems) {
             if (cartItems[item] > 0) {
-                let itemInfo = all_product.find((product) => product.id === Number(item));
-                totalAmount += itemInfo.new_price * cartItems[item];
+                const itemInfo = allProducts.find((product) => product.id === Number(item));
+                if (itemInfo) totalAmount += itemInfo.new_price * cartItems[item];
             }
         }
         return totalAmount;
@@ -144,7 +145,7 @@ const ShopContextProvider = (props) => {
     const contextValue = {
         getTotalCartItems,
         getTotalCartAmount,
-        all_product,
+        all_product: allProducts,
         cartItems,
         addToCart,
         removeFromCart,

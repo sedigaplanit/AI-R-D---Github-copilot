@@ -37,15 +37,15 @@ const CartItems = () => {
         .map((p) => ({ id: p.id, name: p.name, image: p.image, price: p.new_price, quantity: cartItems[p.id] }));
 
     const handleAddQuantity = (id) => {
-        updateCartItemCount(id, cartItems[id] + 1);
-    };
-    
-    const handleSubtractQuantity = (id) => {
         if (cartItems[id] > 1) {
             updateCartItemCount(id, cartItems[id] - 1);
         } else {
             removeFromCart(id);
         }
+    };
+    
+    const handleSubtractQuantity = (id) => {
+        updateCartItemCount(id, cartItems[id] + 1);
     };
 
     return (

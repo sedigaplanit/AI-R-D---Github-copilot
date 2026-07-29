@@ -1,4 +1,5 @@
 import React, { createContext, useState } from "react";
+import api from "../api/apiClient";
 
 const AuthContext = createContext();
 
@@ -16,8 +17,9 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem("jwt_token", token);
   };
 
-  // Called on logout — clears everything from localStorage
-  const logout = () => {
+  // Called on logout — notifies backend then clears local state
+  const logout = async () => {
+    try { await api('/api/auth/logout', { method: 'POST' }); } catch (_) {}
     setUser(null);
     localStorage.removeItem("user");
     localStorage.removeItem("jwt_token");

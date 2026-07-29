@@ -1,28 +1,33 @@
-import React, { useContext, useEffect } from 'react';
-import { ShopContext } from '../Context/ShopContext';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import Breadcrump from '../Components/Breadcrump/Breadcrump';
 import ProductDisplay from '../Components/ProductDisplay/ProductDisplay';
 import { trackEvent } from '../utils/analytics';
+import api from '../api/apiClient';
 
 const Product = () => {
-  const { all_product } = useContext(ShopContext);
   const { productId } = useParams();
-  const product = all_product?.find((e) => e.id === Number(productId));
+  const [product, setProduct] = useState(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (product) {
-      trackEvent('PRODUCT_VIEW', {
-        productId: product.id,
-        productName: product.name,
-        category: product.category,
-      });
-    }
-  }, [product?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setProduct(null);
+    setNotFound(false);
+    api(`/api/products/${productId}`)
+      .then(d => {
+        const p = { ...d.product, image: d.product.image_url };
+        setProduct(p);
+        trackEvent('PRODUCT_VIEW', {
+          productId: p.id,
+          productName: p.name,
+          category: p.category,
+        });
+      })
+      .catch(() => setNotFound(true));
+  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!product) {
-    return <div>Product not found or still loading...</div>;
-  }
+  if (notFound) return <div>Product not found.</div>;
+  if (!product) return <div>Loading...</div>;
 
   return (
     <div>

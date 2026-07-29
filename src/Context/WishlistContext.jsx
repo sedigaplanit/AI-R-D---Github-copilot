@@ -8,6 +8,7 @@ const WishlistContext = createContext();
 export const WishlistProvider = ({ children }) => {
   // Wishlist lives entirely on the server for logged-in users; in-memory only for guests.
   const [wishlist, setWishlist] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]);
 
   const { user } = useContext(AuthContext);
 
@@ -40,12 +41,10 @@ export const WishlistProvider = ({ children }) => {
   const isWishlisted = (productId) => wishlist.includes(productId);
 
   const clearWishlistItems = (productIds) => {
-    const next = wishlist.filter((id) => !productIds.includes(id));
-    setWishlist(next);
+    setWishlist(prev => prev.filter(id => !productIds.includes(id)));
+    setWishlistItems(prev => prev.filter(item => !productIds.includes(item.id)));
     if (user) {
-      productIds.forEach((id) => {
-        api(`/api/wishlist/${id}`, { method: 'DELETE' }).catch(() => {});
-      });
+      api('/api/wishlist', { method: 'DELETE' }).catch(() => {});
     }
   };
 
@@ -53,15 +52,20 @@ export const WishlistProvider = ({ children }) => {
   const loadWishlistFromAPI = async () => {
     try {
       const data = await api('/api/wishlist');
-      const ids = data.wishlist.map((item) => item.product_id);
-      setWishlist(ids);
+      setWishlist(data.wishlist.map((item) => item.product_id));
+      setWishlistItems(data.wishlist.map(item => ({
+        ...item,
+        id: item.product_id,
+        image: item.image_url,
+      })));
     } catch {
       // Not logged in or network error — leave wishlist as-is
+    }
     }
   };
 
   return (
-    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isWishlisted, clearWishlistItems, loadWishlistFromAPI }}>
+    <WishlistContext.Provider value={{ wishlist, wishlistItems, toggleWishlist, isWishlisted, clearWishlistItems, loadWishlistFromAPI }}>
       {children}
     </WishlistContext.Provider>
   );
