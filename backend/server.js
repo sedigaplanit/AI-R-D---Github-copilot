@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const pool = require('./db');
 const initDb = require('./initDb');
 const attachTraceId = require('./middleware/traceId');
 const { logger } = require('./logger');
@@ -66,9 +67,24 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
+// Purge app_logs rows older than 3 days. Runs at startup + every 24 h.
+const purgeOldLogs = async () => {
+  try {
+    const { rowCount } = await pool.query(
+      `DELETE FROM app_logs WHERE logged_at < NOW() - INTERVAL '3 days'`
+    );
+    if (rowCount > 0)
+      logger.info({ component: 'app.server', message: `Log cleanup: removed ${rowCount} entries older than 3 days.` });
+  } catch (err) {
+    logger.error({ component: 'app.server', message: `Log cleanup failed: ${err.message}` });
+  }
+};
+
 initDb()
   .then(() => seedDb())
   .then(() => {
+    purgeOldLogs();
+    setInterval(purgeOldLogs, 24 * 60 * 60 * 1000); // repeat every 24 h
     app.listen(PORT, () =>
       logger.info({ component: 'app.server', message: `Server running on http://localhost:${PORT}` })
     );

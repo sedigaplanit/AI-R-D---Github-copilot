@@ -1,6 +1,7 @@
 'use strict';
 const { createLogger, format, transports } = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
+const PgTransport     = require('./dbTransport');
 const path = require('path');
 
 // ── Masking helpers ────────────────────────────────────────────────────────────
@@ -72,6 +73,8 @@ const logger = createLogger({
         lineFormat
       ),
     }),
+    // PostgreSQL transport — persists logs across Render restarts/redeploys
+    new PgTransport({ level: 'info' }),
   ],
 });
 

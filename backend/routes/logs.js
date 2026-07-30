@@ -3,6 +3,7 @@ const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
 const requireAuth = require('../middleware/requireAuth');
+const pool = require('../db');
 
 const logsDir = path.join(__dirname, '..', 'logs');
 
@@ -72,7 +73,8 @@ router.get('/', (req, res) => {
 /**
  * GET /api/admin/logs/download
  *
- * Admin-only (JWT + is_admin). Returns a downloadable .logs file.
+ * Admin-only (JWT + is_admin). Reads from the persistent `app_logs` DB table
+ * and returns a downloadable .logs file.
  *
  * Mode A — recent N minutes (default):
  *   ?minutes=10   positive integer 1-1440, default 10
@@ -80,7 +82,7 @@ router.get('/', (req, res) => {
  * Mode B — custom range:
  *   ?from=2026-07-30T09:00:00Z&to=2026-07-30T10:00:00Z   ISO 8601 UTC strings
  */
-router.get('/download', requireAuth, (req, res) => {
+router.get('/download', requireAuth, async (req, res) => {
   if (!req.user.is_admin) {
     return res.status(403).json({ message: 'Forbidden. Admin access required.' });
   }
@@ -115,39 +117,33 @@ router.get('/download', requireAuth, (req, res) => {
     filename = `app-logs-last-${minutes}min-${ts}.logs`;
   }
 
-  // ── Collect log files covering the date range ────────────────────────────
-  const startDay = new Date(fromTs);
-  startDay.setUTCHours(0, 0, 0, 0);
-  const allLines = [];
-  const cursor = new Date(startDay);
-  while (cursor.getTime() <= toTs) {
-    const date    = cursor.toISOString().slice(0, 10);
-    const logFile = path.join(logsDir, `app-${date}.log`);
-    if (fs.existsSync(logFile)) {
-      allLines.push(...fs.readFileSync(logFile, 'utf8').trimEnd().split('\n'));
+  try {
+    const { rows } = await pool.query(
+      `SELECT logged_at, level, component, message
+         FROM app_logs
+        WHERE logged_at >= $1 AND logged_at <= $2
+        ORDER BY logged_at ASC`,
+      [new Date(fromTs), new Date(toTs)]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'No log entries found in the selected time range.' });
     }
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+
+    // Format each DB row to match the Winston log line format
+    const lines = rows.map((row) => {
+      const ts        = new Date(row.logged_at).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
+      const level     = (row.level || 'INFO').padEnd(5);
+      const component = String(row.component || 'app.server').padEnd(35);
+      return `${ts} ${level} [api-1] ${component} - ${row.message}`;
+    });
+
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(lines.join('\n'));
+  } catch (err) {
+    res.status(500).json({ message: `Failed to retrieve logs: ${err.message}` });
   }
-
-  if (allLines.length === 0) {
-    return res.status(404).json({ message: 'No log files found for the selected period.' });
-  }
-
-  // ── Filter to the exact time window ─────────────────────────────────────
-  const filteredLines = allLines.filter((line) => {
-    const m = line.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}\.\d+)/);
-    if (!m) return false;
-    const ts = new Date(`${m[1]}T${m[2]}Z`).getTime();
-    return !isNaN(ts) && ts >= fromTs && ts <= toTs;
-  });
-
-  if (filteredLines.length === 0) {
-    return res.status(404).json({ message: 'No log entries found in the selected time range.' });
-  }
-
-  res.setHeader('Content-Type', 'text/plain');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(filteredLines.join('\n'));
 });
 
 module.exports = router;

@@ -102,6 +102,15 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (user_id, product_id)
       );
+
+      CREATE TABLE IF NOT EXISTS app_logs (
+        id         BIGSERIAL PRIMARY KEY,
+        logged_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+        level      VARCHAR(10) NOT NULL,
+        component  VARCHAR(100),
+        message    TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_app_logs_logged_at ON app_logs (logged_at);
     `);
     console.log('Database tables ready.');
   } finally {
