@@ -70,54 +70,84 @@ router.get('/', (req, res) => {
 });
 
 /**
- * GET /api/admin/logs/download?minutes=N
+ * GET /api/admin/logs/download
  *
- * Admin-only (JWT + is_admin). Filters today's log entries from the last N
- * minutes and returns them as a downloadable .logs file.
+ * Admin-only (JWT + is_admin). Returns a downloadable .logs file.
  *
- * Query params:
- *   minutes — positive integer, 1-1440 (default: 10)
+ * Mode A — recent N minutes (default):
+ *   ?minutes=10   positive integer 1-1440, default 10
+ *
+ * Mode B — custom range:
+ *   ?from=2026-07-30T09:00:00Z&to=2026-07-30T10:00:00Z   ISO 8601 UTC strings
  */
 router.get('/download', requireAuth, (req, res) => {
   if (!req.user.is_admin) {
     return res.status(403).json({ message: 'Forbidden. Admin access required.' });
   }
 
-  const minutesParam = parseInt(req.query.minutes, 10);
-  const minutes = !isNaN(minutesParam) && minutesParam > 0 && minutesParam <= 1440
-    ? minutesParam
-    : 10;
+  const { from, to, minutes: minutesQuery } = req.query;
+  let fromTs, toTs, filename;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const logFile = path.join(logsDir, `app-${today}.log`);
-
-  if (!fs.existsSync(logFile)) {
-    return res.status(404).json({ message: `No log file found for today (${today}).` });
+  if (from || to) {
+    // ── Custom range mode ────────────────────────────────────────────────────
+    if (!from || !to) {
+      return res.status(400).json({ message: 'Both "from" and "to" are required for a custom range.' });
+    }
+    fromTs = new Date(from).getTime();
+    toTs   = new Date(to).getTime();
+    if (isNaN(fromTs) || isNaN(toTs)) {
+      return res.status(400).json({ message: 'Invalid "from" or "to" datetime. Use ISO 8601 (e.g. 2026-07-30T09:00:00Z).' });
+    }
+    if (fromTs >= toTs) {
+      return res.status(400).json({ message: '"from" must be before "to".' });
+    }
+    const fromStr = new Date(fromTs).toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    const toStr   = new Date(toTs).toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    filename = `app-logs-${fromStr}_to_${toStr}.logs`;
+  } else {
+    // ── Recent N minutes mode ────────────────────────────────────────────────
+    const minutesParam = parseInt(minutesQuery, 10);
+    const minutes = !isNaN(minutesParam) && minutesParam > 0 && minutesParam <= 1440
+      ? minutesParam : 10;
+    toTs   = Date.now();
+    fromTs = toTs - minutes * 60 * 1000;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    filename = `app-logs-last-${minutes}min-${ts}.logs`;
   }
 
-  const content = fs.readFileSync(logFile, 'utf8');
-  const lines = content.trimEnd().split('\n');
+  // ── Collect log files covering the date range ────────────────────────────
+  const startDay = new Date(fromTs);
+  startDay.setUTCHours(0, 0, 0, 0);
+  const allLines = [];
+  const cursor = new Date(startDay);
+  while (cursor.getTime() <= toTs) {
+    const date    = cursor.toISOString().slice(0, 10);
+    const logFile = path.join(logsDir, `app-${date}.log`);
+    if (fs.existsSync(logFile)) {
+      allLines.push(...fs.readFileSync(logFile, 'utf8').trimEnd().split('\n'));
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
 
-  const cutoff = Date.now() - minutes * 60 * 1000;
-  const recentLines = lines.filter((line) => {
-    const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}\.\d+)/);
-    if (!tsMatch) return false;
-    // Replace space with T for proper ISO 8601 parsing; append Z so it's
-    // treated as UTC, matching the UTC-based Date.now() cutoff.
-    const ts = new Date(`${tsMatch[1]}T${tsMatch[2]}Z`).getTime();
-    return !isNaN(ts) && ts >= cutoff;
+  if (allLines.length === 0) {
+    return res.status(404).json({ message: 'No log files found for the selected period.' });
+  }
+
+  // ── Filter to the exact time window ─────────────────────────────────────
+  const filteredLines = allLines.filter((line) => {
+    const m = line.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}\.\d+)/);
+    if (!m) return false;
+    const ts = new Date(`${m[1]}T${m[2]}Z`).getTime();
+    return !isNaN(ts) && ts >= fromTs && ts <= toTs;
   });
 
-  if (recentLines.length === 0) {
-    return res.status(404).json({ message: `No log entries found in the last ${minutes} minute(s).` });
+  if (filteredLines.length === 0) {
+    return res.status(404).json({ message: 'No log entries found in the selected time range.' });
   }
-
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const filename = `app-logs-last-${minutes}min-${ts}.logs`;
 
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(recentLines.join('\n'));
+  res.send(filteredLines.join('\n'));
 });
 
 module.exports = router;

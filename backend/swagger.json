@@ -208,8 +208,22 @@
             "name": "minutes",
             "in": "query",
             "schema": { "type": "integer", "minimum": 1, "maximum": 1440, "default": 10 },
-            "description": "How many minutes back to include. Defaults to 10.",
+            "description": "Mode A — last N minutes. Ignored when 'from' and 'to' are provided.",
             "example": 20
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" },
+            "description": "Mode B — custom range start (ISO 8601 UTC). Requires 'to'.",
+            "example": "2026-07-30T09:00:00Z"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": { "type": "string", "format": "date-time" },
+            "description": "Mode B — custom range end (ISO 8601 UTC). Requires 'from'.",
+            "example": "2026-07-30T10:30:00Z"
           }
         ],
         "responses": {

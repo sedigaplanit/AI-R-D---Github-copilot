@@ -19,8 +19,17 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   // Admin log download state
+  const [logMode, setLogMode] = useState('recent');  // 'recent' | 'custom'
   const [logMinutes, setLogMinutes] = useState(10);
   const [downloading, setDownloading] = useState(false);
+
+  // Helper: local datetime string for datetime-local inputs
+  const toLocalDT = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+  const [fromDateTime, setFromDateTime] = useState(() => toLocalDT(new Date(Date.now() - 60 * 60 * 1000)));
+  const [toDateTime,   setToDateTime]   = useState(() => toLocalDT(new Date()));
 
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -73,25 +82,41 @@ const Profile = () => {
     try {
       const BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
       const token = localStorage.getItem('jwt_token');
-      const response = await fetch(
-        `${BASE}/api/admin/logs/download?minutes=${logMinutes}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      let url, filename;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+      if (logMode === 'recent') {
+        url      = `${BASE}/api/admin/logs/download?minutes=${logMinutes}`;
+        filename = `app-logs-last-${logMinutes}min-${ts}.logs`;
+      } else {
+        if (!fromDateTime || !toDateTime) {
+          showToast('Please select both From and To date/time.', 'error');
+          setDownloading(false);
+          return;
+        }
+        const from = new Date(fromDateTime).toISOString();
+        const to   = new Date(toDateTime).toISOString();
+        url      = `${BASE}/api/admin/logs/download?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        filename = `app-logs-${fromDateTime.replace(/[T:]/g, '-')}_to_${toDateTime.replace(/[T:]/g, '-')}.logs`;
+      }
+
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.message || `Server error (${response.status})`);
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.href = url;
-      a.download = `app-logs-last-${logMinutes}min-${ts}.logs`;
+      const blob    = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a       = document.createElement('a');
+      a.href        = blobUrl;
+      a.download    = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Downloaded logs for the last ${logMinutes} minute(s).`);
+      URL.revokeObjectURL(blobUrl);
+      showToast(logMode === 'recent'
+        ? `Downloaded logs for the last ${logMinutes} minute(s).`
+        : 'Downloaded logs for the selected range.');
     } catch (err) {
       showToast(err.message || 'Failed to download logs.', 'error');
     } finally {
@@ -167,29 +192,75 @@ const Profile = () => {
         {user?.is_admin && (
           <div className="profile-admin-panel">
             <h3>Admin — Download Logs</h3>
-            <p>Download production log entries for a custom time window.</p>
-            <div className="profile-admin-stepper">
-              <button
-                type="button"
-                className="stepper-btn"
-                onClick={() => setLogMinutes((m) => Math.max(1, m - 10))}
-                disabled={logMinutes <= 1}
-              >−</button>
-              <span className="stepper-value">{logMinutes} min</span>
-              <button
-                type="button"
-                className="stepper-btn"
-                onClick={() => setLogMinutes((m) => Math.min(1440, m + 10))}
-                disabled={logMinutes >= 1440}
-              >+</button>
+
+            {/* Mode radio buttons */}
+            <div className="admin-radio-group">
+              <label className="admin-radio-label">
+                <input
+                  type="radio" name="logMode" value="recent"
+                  checked={logMode === 'recent'}
+                  onChange={() => setLogMode('recent')}
+                />
+                Last N minutes
+              </label>
+              <label className="admin-radio-label">
+                <input
+                  type="radio" name="logMode" value="custom"
+                  checked={logMode === 'custom'}
+                  onChange={() => setLogMode('custom')}
+                />
+                Custom range
+              </label>
             </div>
+
+            {logMode === 'recent' ? (
+              <>
+                <p>Download log entries from the last N minutes.</p>
+                <div className="profile-admin-stepper">
+                  <button
+                    type="button" className="stepper-btn"
+                    onClick={() => setLogMinutes((m) => Math.max(1, m - 10))}
+                    disabled={logMinutes <= 1}
+                  >−</button>
+                  <span className="stepper-value">{logMinutes} min</span>
+                  <button
+                    type="button" className="stepper-btn"
+                    onClick={() => setLogMinutes((m) => Math.min(1440, m + 10))}
+                    disabled={logMinutes >= 1440}
+                  >+</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p>Select a date/time range (your local time).</p>
+                <div className="admin-datetime-group">
+                  <label className="admin-datetime-label">From</label>
+                  <input
+                    type="datetime-local"
+                    className="admin-datetime-input"
+                    value={fromDateTime}
+                    max={toDateTime}
+                    onChange={(e) => setFromDateTime(e.target.value)}
+                  />
+                  <label className="admin-datetime-label">To</label>
+                  <input
+                    type="datetime-local"
+                    className="admin-datetime-input"
+                    value={toDateTime}
+                    min={fromDateTime}
+                    onChange={(e) => setToDateTime(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
             <button
               type="button"
               className="profile-download-btn"
               onClick={handleDownloadLogs}
               disabled={downloading}
             >
-              {downloading ? 'Downloading...' : `Download Last ${logMinutes} min`}
+              {downloading ? 'Downloading...' : logMode === 'recent' ? `Download Last ${logMinutes} min` : 'Download Range'}
             </button>
           </div>
         )}
