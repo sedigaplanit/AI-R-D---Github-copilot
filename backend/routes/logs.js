@@ -100,9 +100,12 @@ router.get('/download', requireAuth, (req, res) => {
 
   const cutoff = Date.now() - minutes * 60 * 1000;
   const recentLines = lines.filter((line) => {
-    const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)/);
+    const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}\.\d+)/);
     if (!tsMatch) return false;
-    return new Date(tsMatch[1]).getTime() >= cutoff;
+    // Replace space with T for proper ISO 8601 parsing; append Z so it's
+    // treated as UTC, matching the UTC-based Date.now() cutoff.
+    const ts = new Date(`${tsMatch[1]}T${tsMatch[2]}Z`).getTime();
+    return !isNaN(ts) && ts >= cutoff;
   });
 
   if (recentLines.length === 0) {
