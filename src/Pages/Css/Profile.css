@@ -105,6 +105,84 @@
 .profile-container button[type="submit"]:hover { background: #e63a3a; }
 .profile-container button[type="submit"]:disabled { background: #ccc; cursor: not-allowed; }
 
+/* Admin Panel */
+.profile-admin-panel {
+  margin-top: 36px;
+  border-top: 1px solid #d0e8ff;
+  padding-top: 24px;
+}
+
+.profile-admin-panel h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a6fc4;
+  margin-bottom: 6px;
+}
+
+.profile-admin-panel p {
+  font-size: 13px;
+  color: #777;
+  margin-bottom: 16px;
+}
+
+.profile-admin-stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.stepper-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #1a6fc4;
+  background: transparent;
+  color: #1a6fc4;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: #1a6fc4;
+  color: #fff;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stepper-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  min-width: 60px;
+  text-align: center;
+}
+
+.profile-download-btn {
+  width: 100%;
+  padding: 11px;
+  background: #1a6fc4;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.profile-download-btn:hover:not(:disabled) { background: #155fa0; }
+.profile-download-btn:disabled { background: #ccc; cursor: not-allowed; }
+
 /* Danger Zone */
 .profile-danger-zone {
   margin-top: 36px;

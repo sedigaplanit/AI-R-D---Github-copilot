@@ -2,15 +2,15 @@
 const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const requireAuth = require('../middleware/requireAuth');
 
 const logsDir = path.join(__dirname, '..', 'logs');
 
 /**
  * GET /api/admin/logs
  *
- * Returns the raw log file for a given date.
- * Protected by a LOG_SECRET env variable checked in the Authorization header.
+ * Returns the raw log file for a given date (curl / server-to-server access).
+ * Protected by LOG_SECRET env variable in the Authorization header.
  *
  * Query params:
  *   date  — YYYY-MM-DD  (defaults to today)
@@ -24,7 +24,6 @@ const logsDir = path.join(__dirname, '..', 'logs');
  *        "https://<your-render-url>/api/admin/logs?date=2026-07-14&lines=200"
  */
 router.get('/', (req, res) => {
-  // ── Auth check ───────────────────────────────────────────────────────────────
   const secret = process.env.LOG_SECRET;
   if (!secret) {
     return res.status(503).json({ message: 'Log access is not configured on this server.' });
@@ -35,7 +34,6 @@ router.get('/', (req, res) => {
     return res.status(401).json({ message: 'Unauthorized.' });
   }
 
-  // ── Date param ────────────────────────────────────────────────────────────────
   const dateParam = req.query.date;
   let date;
   if (dateParam) {
@@ -58,7 +56,6 @@ router.get('/', (req, res) => {
     return res.status(404).json({ message: `No log file found for ${date}.` });
   }
 
-  // ── Optional tail ─────────────────────────────────────────────────────────────
   const linesParam = parseInt(req.query.lines, 10);
   const content = fs.readFileSync(logFile, 'utf8');
 
@@ -72,61 +69,25 @@ router.get('/', (req, res) => {
   res.send(content);
 });
 
-module.exports = router;
-
-// ── Helper: build nodemailer transporter from env vars ────────────────────────
-function createTransporter() {
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',   // true for 465, false for 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-}
-
 /**
- * POST /api/admin/logs/email
+ * GET /api/admin/logs/download?minutes=N
  *
- * Filters the last 1 hour of today's log file and emails it.
- * Protected by the same LOG_SECRET bearer token as GET /.
+ * Admin-only (JWT + is_admin). Filters today's log entries from the last N
+ * minutes and returns them as a downloadable .logs file.
  *
- * Optional JSON body:
- *   { "to": "recipient@example.com" }   — overrides LOG_EMAIL_TO env var
- *
- * Required env vars:
- *   LOG_SECRET, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, LOG_EMAIL_TO
- *
- * Usage:
- *   curl -X POST -H "Authorization: Bearer <LOG_SECRET>" \
- *        -H "Content-Type: application/json" \
- *        -d '{"to":"you@example.com"}' \
- *        https://<your-render-url>/api/admin/logs/email
+ * Query params:
+ *   minutes — positive integer, 1-1440 (default: 10)
  */
-router.post('/email', async (req, res) => {
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  const secret = process.env.LOG_SECRET;
-  if (!secret) {
-    return res.status(503).json({ message: 'Log access is not configured on this server.' });
-  }
-  const authHeader = req.headers.authorization || '';
-  if (!authHeader.startsWith('Bearer ') || authHeader.slice(7) !== secret) {
-    return res.status(401).json({ message: 'Unauthorized.' });
+router.get('/download', requireAuth, (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ message: 'Forbidden. Admin access required.' });
   }
 
-  // ── SMTP config check ─────────────────────────────────────────────────────
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return res.status(503).json({ message: 'SMTP is not configured on this server (missing SMTP_HOST / SMTP_USER / SMTP_PASS).' });
-  }
+  const minutesParam = parseInt(req.query.minutes, 10);
+  const minutes = !isNaN(minutesParam) && minutesParam > 0 && minutesParam <= 1440
+    ? minutesParam
+    : 10;
 
-  const recipient = (req.body && req.body.to) || process.env.LOG_EMAIL_TO;
-  if (!recipient) {
-    return res.status(400).json({ message: 'Provide a recipient in the request body { "to": "..." } or set LOG_EMAIL_TO env var.' });
-  }
-
-  // ── Read today's log file ─────────────────────────────────────────────────
   const today = new Date().toISOString().slice(0, 10);
   const logFile = path.join(logsDir, `app-${today}.log`);
 
@@ -137,34 +98,24 @@ router.post('/email', async (req, res) => {
   const content = fs.readFileSync(logFile, 'utf8');
   const lines = content.trimEnd().split('\n');
 
-  // ── Filter last 1 hour ────────────────────────────────────────────────────
-  // Log line format: "2026-07-15 10:30:01.102 INFO  [api-1] ..."
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const cutoff = Date.now() - minutes * 60 * 1000;
   const recentLines = lines.filter((line) => {
     const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+)/);
     if (!tsMatch) return false;
-    return new Date(tsMatch[1]).getTime() >= oneHourAgo;
+    return new Date(tsMatch[1]).getTime() >= cutoff;
   });
 
   if (recentLines.length === 0) {
-    return res.status(404).json({ message: 'No log entries found in the last 1 hour.' });
+    return res.status(404).json({ message: `No log entries found in the last ${minutes} minute(s).` });
   }
 
-  // ── Send email ────────────────────────────────────────────────────────────
-  const transporter = createTransporter();
-  const subject = `[OneStyle] Production Logs — Last 1 Hour (${new Date().toISOString()})`;
-  const body = recentLines.join('\n');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filename = `app-logs-last-${minutes}min-${ts}.logs`;
 
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to:   recipient,
-      subject,
-      text: body,
-    });
-    return res.json({ message: `Log email sent to ${recipient}. Lines included: ${recentLines.length}.` });
-  } catch (err) {
-    return res.status(500).json({ message: `Failed to send email: ${err.message}` });
-  }
+  res.setHeader('Content-Type', 'text/plain');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(recentLines.join('\n'));
 });
+
+module.exports = router;
 

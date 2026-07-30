@@ -18,6 +18,10 @@ const Profile = () => {
   });
   const [saving, setSaving] = useState(false);
 
+  // Admin log download state
+  const [logMinutes, setLogMinutes] = useState(10);
+  const [downloading, setDownloading] = useState(false);
+
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -61,6 +65,37 @@ const Profile = () => {
       showToast(err.message || 'Failed to delete account.', 'error');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleDownloadLogs = async () => {
+    setDownloading(true);
+    try {
+      const BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('jwt_token');
+      const response = await fetch(
+        `${BASE}/api/admin/logs/download?minutes=${logMinutes}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `Server error (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `app-logs-last-${logMinutes}min-${ts}.logs`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`Downloaded logs for the last ${logMinutes} minute(s).`);
+    } catch (err) {
+      showToast(err.message || 'Failed to download logs.', 'error');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -126,6 +161,37 @@ const Profile = () => {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </form>
+        )}
+
+        {/* Admin Panel — visible to admin users only */}
+        {user?.is_admin && (
+          <div className="profile-admin-panel">
+            <h3>Admin — Download Logs</h3>
+            <p>Download production log entries for a custom time window.</p>
+            <div className="profile-admin-stepper">
+              <button
+                type="button"
+                className="stepper-btn"
+                onClick={() => setLogMinutes((m) => Math.max(1, m - 10))}
+                disabled={logMinutes <= 1}
+              >−</button>
+              <span className="stepper-value">{logMinutes} min</span>
+              <button
+                type="button"
+                className="stepper-btn"
+                onClick={() => setLogMinutes((m) => Math.min(1440, m + 10))}
+                disabled={logMinutes >= 1440}
+              >+</button>
+            </div>
+            <button
+              type="button"
+              className="profile-download-btn"
+              onClick={handleDownloadLogs}
+              disabled={downloading}
+            >
+              {downloading ? 'Downloading...' : `Download Last ${logMinutes} min`}
+            </button>
+          </div>
         )}
 
         {/* Danger Zone */}

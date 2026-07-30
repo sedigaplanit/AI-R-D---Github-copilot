@@ -9,7 +9,11 @@ const log = logger.child({ component: 'app.routes.auth' });
 
 const sign = (user) =>
   jwt.sign(
-    { id: user.id, name: user.name, email: user.email, gender: user.gender || null, mobile: user.mobile || null, address: user.address || null },
+    {
+      id: user.id, name: user.name, email: user.email,
+      gender: user.gender || null, mobile: user.mobile || null, address: user.address || null,
+      is_admin: user.email === (process.env.ADMIN_EMAIL || ''),
+    },
     process.env.JWT_SECRET || 'dev_jwt_secret',
     { expiresIn: '7d' }
   );
@@ -37,7 +41,7 @@ router.post('/signup', async (req, res) => {
       [name, email, hash, gender || null, mobile || null, address || null]
     );
 
-    const user = { id: rows[0].id, name, email, gender: gender || null, mobile: mobile || null, address: address || null };
+    const user = { id: rows[0].id, name, email, gender: gender || null, mobile: mobile || null, address: address || null, is_admin: email === (process.env.ADMIN_EMAIL || '') };
     log.info(`[Trace: ${trace}] User registered successfully. User: ${maskUserId(user.id)}. JWT token issued. Session established.`);
     res.status(201).json({ user, token: sign(user) });
   } catch (err) {
@@ -62,7 +66,7 @@ router.post('/login', async (req, res) => {
     if (!match)
       return res.status(401).json({ message: 'Invalid email or password.' });
 
-    const user = { id: dbUser.id, name: dbUser.name, email: dbUser.email, gender: dbUser.gender, mobile: dbUser.mobile, address: dbUser.address };
+    const user = { id: dbUser.id, name: dbUser.name, email: dbUser.email, gender: dbUser.gender, mobile: dbUser.mobile, address: dbUser.address, is_admin: dbUser.email === (process.env.ADMIN_EMAIL || '') };
     res.json({ user, token: sign(user) });
   } catch (err) {
     console.error(err);
@@ -92,7 +96,7 @@ router.get('/me', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'User not found.' });
     }
     log.info(`[Trace: ${trace}] Profile retrieved successfully for User: ${maskUserId(req.user.id)}`);
-    res.json({ user: rows[0] });
+    res.json({ user: { ...rows[0], is_admin: rows[0].email === (process.env.ADMIN_EMAIL || '') } });
   } catch (err) {
     log.error(`[Trace: ${trace}] Profile fetch failed. User: ${maskUserId(req.user.id)} — ${err.message}`);
     res.status(500).json({ message: 'Server error.' });

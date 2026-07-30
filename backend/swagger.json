@@ -196,62 +196,46 @@
         }
       }
     },
-    "/api/admin/logs/email": {
-      "post": {
-        "operationId": "emailRecentLogs",
-        "summary": "Email the last 1 hour of production logs",
-        "description": "Reads today's log file, filters entries from the last 60 minutes, and sends them to the specified recipient via SMTP. Protected by LOG_SECRET. Requires SMTP_HOST, SMTP_USER, SMTP_PASS env vars on the server.",
+    "/api/admin/logs/download": {
+      "get": {
+        "operationId": "downloadRecentLogs",
+        "summary": "Download recent production logs as a .logs file",
+        "description": "Admin-only (JWT + is_admin). Filters today's log entries from the last N minutes and returns them as a downloadable .logs file.",
         "tags": ["System"],
-        "security": [{ "LogSecretAuth": [] }],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "to": {
-                    "type": "string",
-                    "format": "email",
-                    "description": "Recipient email address. Falls back to LOG_EMAIL_TO env var if omitted.",
-                    "example": "admin@example.com"
-                  }
-                }
-              }
-            }
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "minutes",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1440, "default": 10 },
+            "description": "How many minutes back to include. Defaults to 10.",
+            "example": 20
           }
-        },
+        ],
         "responses": {
           "200": {
-            "description": "Email sent successfully",
+            "description": "Log file download",
             "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": { "type": "string", "example": "Log email sent to admin@example.com. Lines included: 42." }
-                  }
-                }
+              "text/plain": {
+                "schema": { "type": "string" }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": { "type": "string", "example": "attachment; filename=\"app-logs-last-10min-2026-07-30T10-00-00.logs\"" }
               }
             }
           },
-          "400": {
-            "description": "No recipient provided",
+          "401": {
+            "description": "Not authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
-          "401": {
-            "description": "Missing or incorrect LOG_SECRET",
+          "403": {
+            "description": "Forbidden — admin access required",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "404": {
-            "description": "No log file or no entries in last 1 hour",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-          },
-          "500": {
-            "description": "SMTP send failed",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
-          },
-          "503": {
-            "description": "LOG_SECRET or SMTP not configured on server",
+            "description": "No log file or no entries in the requested time window",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
