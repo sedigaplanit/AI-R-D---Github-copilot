@@ -10,7 +10,7 @@ const generateOrderNumber = () => `ORD-${Math.floor(100000 + Math.random() * 900
 const PAYMENT_METHODS = [
   { id: 'card',   label: 'Credit / Debit Card', icon: '💳' },
   { id: 'paypal', label: 'PayPal',               icon: '🅿️' },
-  { id: 'cod',    label: 'Cash on Delivery',     icon: '💵' },
+  { id: 'cod',    label: 'COD',     icon: '💵' },
 ];
 
 const CheckoutModal = ({ total, items, onClose, onSuccess }) => {
