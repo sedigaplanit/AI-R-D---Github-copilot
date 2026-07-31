@@ -76,3 +76,13 @@ CREATE TABLE IF NOT EXISTS reviews (
   UNIQUE (user_id, product_id)
 );
 
+-- ── App Logs ───────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_logs (
+  id         BIGSERIAL PRIMARY KEY,
+  logged_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  level      VARCHAR(10) NOT NULL,
+  component  VARCHAR(100),
+  message    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_app_logs_logged_at ON app_logs (logged_at);
+
