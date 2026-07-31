@@ -23,13 +23,13 @@ const Profile = () => {
   const [logMinutes, setLogMinutes] = useState(10);
   const [downloading, setDownloading] = useState(false);
 
-  // Helper: local datetime string for datetime-local inputs
-  const toLocalDT = (date) => {
+  // Helper: UTC datetime string for datetime-local inputs (server stores logs in UTC)
+  const toUTCDT = (date) => {
     const pad = (n) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
   };
-  const [fromDateTime, setFromDateTime] = useState(() => toLocalDT(new Date(Date.now() - 60 * 60 * 1000)));
-  const [toDateTime,   setToDateTime]   = useState(() => toLocalDT(new Date()));
+  const [fromDateTime, setFromDateTime] = useState(() => toUTCDT(new Date(Date.now() - 60 * 60 * 1000)));
+  const [toDateTime,   setToDateTime]   = useState(() => toUTCDT(new Date()));
 
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -94,8 +94,8 @@ const Profile = () => {
           setDownloading(false);
           return;
         }
-        const from = new Date(fromDateTime).toISOString();
-        const to   = new Date(toDateTime).toISOString();
+        const from = fromDateTime + ':00Z';  // picker values are UTC, append Z
+        const to   = toDateTime   + ':00Z';
         url      = `${BASE}/api/admin/logs/download?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
         filename = `app-logs-${fromDateTime.replace(/[T:]/g, '-')}_to_${toDateTime.replace(/[T:]/g, '-')}.logs`;
       }
@@ -232,7 +232,7 @@ const Profile = () => {
               </>
             ) : (
               <>
-                <p>Select a date/time range (your local time).</p>
+                <p>Select a date/time range <span className="profile-optional">(UTC — server time)</span>.</p>
                 <div className="admin-datetime-group">
                   <label className="admin-datetime-label">From</label>
                   <input
