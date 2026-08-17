@@ -16,6 +16,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: LOG_ENV
+        value: production
+      - key: LOG_COMPANY_ID
+        value: "0000"
+      - key: LOG_THREAD
+        value: "node-http"
       - key: DATABASE_URL
         sync: false   # Set this manually in the Render dashboard → Environment → DATABASE_URL
       - key: JWT_SECRET

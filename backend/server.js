@@ -4,6 +4,7 @@ const cors = require('cors');
 const pool = require('./db');
 const initDb = require('./initDb');
 const attachTraceId = require('./middleware/traceId');
+const requestJournal = require('./middleware/requestJournal');
 const { logger } = require('./logger');
 
 const authRouter     = require('./routes/auth');
@@ -43,14 +44,9 @@ app.use(express.json());
 // ── Trace ID ──────────────────────────────────────────────────────────────────
 app.use(attachTraceId);
 
-// ── Request logger ────────────────────────────────────────────────────────────
-app.use((req, _res, next) => {
-  logger.info({
-    component: 'app.middleware.request',
-    message: `[Trace: req_${req.traceId}] Incoming Request — Method: ${req.method}, URL: ${req.path}`,
-  });
-  next();
-});
+// ── Request journal ─────────────────────────────────────────────────────────
+// Emits one tab-separated HTTP_REQUEST_JOURNAL line per request (start+finish).
+app.use(requestJournal);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use('/api/auth',       authRouter);

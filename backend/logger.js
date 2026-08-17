@@ -41,11 +41,15 @@ const formatSessionId = (sessionId) => {
 };
 
 // ── Log line format ────────────────────────────────────────────────────────────
-// Matches the production log shape shown in the brief:
+// Journal entries (HTTP_REQUEST_JOURNAL) are pre-formatted, tab-separated and
+// self-contained, so they are printed verbatim — exactly like the production
+// access-journal sample. All other application messages keep the readable shape:
 //   2026-07-15 10:30:01.102 INFO  [api-1] app.routes.auth               - [Trace: ...]
-const lineFormat = format.printf(({ timestamp, level, component, message }) =>
-  `${timestamp} ${level.toUpperCase().padEnd(5)} [api-1] ${String(component || 'app.server').padEnd(35)} - ${message}`
-);
+const lineFormat = format.printf((info) => {
+  if (info.component === 'HTTP_REQUEST_JOURNAL') return String(info.message);
+  const level = String(info.level || 'info').toUpperCase().padEnd(5);
+  return `${info.timestamp} ${level} [api-1] ${String(info.component || 'app.server').padEnd(35)} - ${info.message}`;
+});
 
 // ── Transports ─────────────────────────────────────────────────────────────────
 const logsDir = path.join(__dirname, 'logs');

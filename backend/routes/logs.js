@@ -1,4 +1,3 @@
-'use strict';
 const router = require('express').Router();
 const fs = require('fs');
 const path = require('path');
@@ -130,8 +129,11 @@ router.get('/download', requireAuth, async (req, res) => {
       return res.status(404).json({ message: 'No log entries found in the selected time range.' });
     }
 
-    // Format each DB row to match the Winston log line format
+    // Format each DB row. Journal rows already contain the full, tab-separated
+    // access-journal line, so they pass through verbatim; app-level rows keep
+    // the older Weston-style formatting.
     const lines = rows.map((row) => {
+      if (row.component === 'HTTP_REQUEST_JOURNAL') return row.message;
       const ts        = new Date(row.logged_at).toISOString().replace('T', ' ').replace('Z', '').slice(0, 23);
       const level     = (row.level || 'INFO').padEnd(5);
       const component = String(row.component || 'app.server').padEnd(35);
