@@ -40,15 +40,25 @@ const formatSessionId = (sessionId) => {
   return `sess_${String(sessionId).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`;
 };
 
+
 // ── Log line format ────────────────────────────────────────────────────────────
-// Journal entries (HTTP_REQUEST_JOURNAL) are pre-formatted, tab-separated and
-// self-contained, so they are printed verbatim — exactly like the production
-// access-journal sample. All other application messages keep the readable shape:
-//   2026-07-15 10:30:01.102 INFO  [api-1] app.routes.auth               - [Trace: ...]
 const lineFormat = format.printf((info) => {
-  if (info.component === 'HTTP_REQUEST_JOURNAL') return String(info.message);
+  // Pad level to 5 chars (e.g., "INFO ")
   const level = String(info.level || 'info').toUpperCase().padEnd(5);
-  return `${info.timestamp} ${level} [api-1] ${String(info.component || 'app.server').padEnd(35)} - ${info.message}`;
+  
+  // Extract metadata (use '-' or fallback values if not provided in the log call)
+  const reqId = info.requestId || '-';
+  const traceId = info.traceId || `*${reqId}`; 
+  // Node is single-threaded, but you can hardcode a Tomcat-like name if your log parser requires it
+  const thread = info.thread || 'http-nio-8080-exec-1'; 
+  const component = info.component || 'APPLICATION';
+  
+  // Notice in your sample, there's an empty tab column when no session exists, 
+  // or a UUID when it does exist right after the component.
+  const sessionId = info.sessionId || ''; 
+
+  // Assemble the tab-separated line
+  return `${info.timestamp}\t[${reqId}]\t[${traceId}]\t[${thread}]\t[${level}]\t[${component}]\t${sessionId}\t${info.message}`;
 });
 
 // ── Transports ─────────────────────────────────────────────────────────────────
@@ -57,15 +67,16 @@ const logsDir = path.join(__dirname, 'logs');
 const logger = createLogger({
   level: 'info',
   transports: [
-    // Console — human-readable with colour
+    // Console
     new transports.Console({
       format: format.combine(
         format.colorize({ all: true }),
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+        // 1. Changed .SSS to ,SSS
+        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss,SSS' }),
         lineFormat
       ),
     }),
-    // Daily rotating file — one file per day, kept for 30 days, gzipped when archived
+    // Daily rotating file
     new DailyRotateFile({
       dirname: logsDir,
       filename: 'app-%DATE%.log',
@@ -73,11 +84,12 @@ const logger = createLogger({
       maxFiles: '30d',
       zippedArchive: true,
       format: format.combine(
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+        // 1. Changed .SSS to ,SSS
+        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss,SSS' }),
         lineFormat
       ),
     }),
-    // PostgreSQL transport — persists logs across Render restarts/redeploys
+    // PostgreSQL transport
     new PgTransport({ level: 'info' }),
   ],
 });

@@ -5,7 +5,7 @@
  * enterprise access journal (see the production sample in the brief).
  *
  *  <startTs> [<reqId>] [*<traceId>] [<thread>] [<level>] [HTTP_REQUEST_JOURNAL]
- *     <empty> HTTP_RES FILTER <env> <host> APPLICATION <companyId> <accountId>
+ *     <sessionId> HTTP_RES FILTER <env> <host> APPLICATION <companyId> <accountId>
  *     <uri> <METHOD> <contentType> <contentLength> <empty> <userAgent> <cookie>
  *     <reqHeadersJson> <reqBodyJson> <status> <resSize> <empty> <resHeadersJava>
  *     <empty> <errorCode> <messages> <endTs> <elapsed>[msec]
@@ -17,10 +17,10 @@
 const os = require('os');
 
 // ── Config (env-overridable, defaults tuned for the demo) ─────────────────
-const THREAD     = process.env.LOG_THREAD  || 'node-http';
-const SYSTEM     = process.env.LOG_SYSTEM  || 'APPLICATION';
-const ENV_NAME   = process.env.LOG_ENV     || (process.env.NODE_ENV || 'dev');
-const COMPANY_ID = process.env.LOG_COMPANY_ID || '0000';
+const THREAD     = process.env.LOG_THREAD     || 'http-nio-8080-exec-1';
+const SYSTEM     = process.env.LOG_SYSTEM     || 'APPLICATION';
+const ENV_NAME   = process.env.LOG_ENV        || 'shedst1-trust-ven';
+const COMPANY_ID = process.env.LOG_COMPANY_ID || '8267';
 const LOGGER     = 'HTTP_REQUEST_JOURNAL';
 const MAX_FIELD  = 2000;
 
@@ -47,6 +47,9 @@ const strip = (v) => {
 /** Flatten a string[] to "a, b" before stripping, then wrap for Java maps. */
 const headerList = (v) => strip(Array.isArray(v) ? v.join(', ') : v);
 
+/** Capitalize Node's lowercase headers to match Java Tomcat output (e.g. 'user-agent' -> 'User-Agent') */
+const titleCaseHeader = (s) => s.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-');
+
 /** Recursively redact sensitive keys (password, token, secret, ...). */
 function maskBody(obj, depth = 0) {
   if (obj == null) return obj;
@@ -60,20 +63,23 @@ function maskBody(obj, depth = 0) {
   return strip(obj);
 }
 
+/** Plain header object (Node raw headers -> arrays of sanitized strings). */
+function buildHeaders(raw) {
+  const out = {};
+  for (const k of Object.keys(raw || {})) {
+    const val = raw[k];
+    out[titleCaseHeader(k)] = [strip(Array.isArray(val) ? val.join(', ') : val)];
+  }
+  return out;
+}
+
 /** Java Map#toString style: "[K=[v1,v2],K2=[v]]". */
 function javaMap(headers) {
   const entries = Object.entries(headers || {});
   if (!entries.length) return '[]';
   return '[' + entries
-    .map(([k, v]) => `${k}=[${headerList(v)}]`)
+    .map(([k, v]) => `${titleCaseHeader(k)}=[${headerList(v)}]`)
     .join(',') + ']';
-}
-
-/** Plain header object (Node raw headers -> sanitized strings). */
-function buildHeaders(raw) {
-  const out = {};
-  for (const k of Object.keys(raw || {})) out[k] = headerList(raw[k]);
-  return out;
 }
 
 /**
@@ -83,7 +89,7 @@ function buildHeaders(raw) {
 function buildJournalLine(ctx) {
   const {
     start, end, reqId, trace, thread, system, envName, hostname,
-    companyId, accountId, uri, method, contentType, contentLength,
+    companyId, accountId, sessionId, uri, method, contentType, contentLength,
     userAgent, cookie, reqHeaders, dto, queryParameters, queryString,
     status, resSize, resHeaders, errorCode, messages,
   } = ctx;
@@ -106,7 +112,7 @@ function buildJournalLine(ctx) {
     `[${strip(thread)}]`,
     `[INFO ]`,
     `[${LOGGER}]`,
-    '',
+    strip(sessionId),
     'HTTP_RES',
     'FILTER',
     strip(envName),
@@ -117,7 +123,7 @@ function buildJournalLine(ctx) {
     strip(uri),
     strip(method),
     strip(contentType),
-    strip(String(contentLength ?? 0)),
+    strip(contentLength != null ? String(contentLength) : ''),
     '',
     strip(userAgent),
     strip(cookie),
@@ -129,7 +135,7 @@ function buildJournalLine(ctx) {
     javaMap(resHeaders),
     '',
     strip(String(errorCode ?? 0)),
-    Array.isArray(messages) && messages.length ? `[${messages.map(strip).join(',')}]` : '[]',
+    Array.isArray(messages) && messages.length ? `[${messages.map(strip).join(', ')}]` : '[]',
     fmtStamp(end),
     `${Math.max(0, end.getTime() - start.getTime())}[msec]`,
   ];
@@ -167,7 +173,7 @@ function requestJournal(req, res, next) {
   const seq = String(++_seq).padStart(8, '0');
   const compact = `${start.getFullYear()}${pad(start.getMonth() + 1)}${pad(start.getDate())}` +
                   `${pad(start.getHours())}${pad(start.getMinutes())}${pad(start.getSeconds())}`;
-  const reqId = `${HOSTNAME}${compact}${seq}`;
+  const reqId = req.headers['x-request-id'] || req.traceId || `${HOSTNAME}${compact}${seq}`;
   const trace = req.headers['x-trace-id'] || `*${reqId}`;
 
   const isJson = (req.headers['content-type'] || '').includes('application/json');
@@ -212,7 +218,8 @@ function requestJournal(req, res, next) {
           if (parsed && parsed.message) msgText = parsed.message;
         } catch (_) { /* non-JSON error body */ }
         if (msgText) {
-          errorCode = '200';
+          // Emulate your java stack's message structure 
+          errorCode = '200'; 
           messages = [`MessageId=HTTP_${status}, MessageTextSummary=${msgText}, MessageTextDetail=null, TargetProperties=[]`];
         }
       }
@@ -223,6 +230,8 @@ function requestJournal(req, res, next) {
         thread: THREAD, system: SYSTEM, envName: ENV_NAME, hostname: HOSTNAME,
         companyId: COMPANY_ID,
         accountId: req.user ? `ACC${String(req.user.id).padStart(7, '0')}` : 'null',
+        // Looks for express-session OR custom x-session-id 
+        sessionId: req.session ? req.session.id : (req.headers['x-session-id'] || ''),
         uri: (req.originalUrl || req.url || '').split('?')[0],
         method: req.method,
         contentType: req.headers['content-type'],
@@ -252,4 +261,3 @@ module.exports.buildJournalLine = buildJournalLine;
 module.exports.maskBody = maskBody;
 module.exports.javaMap = javaMap;
 module.exports.fmtStamp = fmtStamp;
-
