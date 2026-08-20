@@ -1,19 +1,4 @@
 'use strict';
-/**
- * Express middleware that logs every HTTP request/response as a single
- * tab-separated "request journal" line, in the same shape as the legacy
- * enterprise access journal (see the production sample in the brief).
- *
- *  <startTs> [<reqId>] [*<traceId>] [<thread>] [<level>] [HTTP_REQUEST_JOURNAL]
- *     <sessionId> HTTP_RES FILTER <env> <host> APPLICATION <companyId> <accountId>
- *     <uri> <METHOD> <contentType> <contentLength> <empty> <userAgent> <cookie>
- *     <reqHeadersJson> <reqBodyJson> <status> <resSize> <empty> <resHeadersJava>
- *     <empty> <errorCode> <messages> <endTs> <elapsed>[msec]
- *
- * The whole line is emitted through Winston as a normal INFO entry whose
- * component is set to HTTP_REQUEST_JOURNAL so all transports (console, file,
- * Postgres) and the /download endpoint treat it verbatim.
- */
 const os = require('os');
 
 // ── Config (env-overridable, defaults tuned for the demo) ─────────────────
@@ -32,25 +17,20 @@ const SENSITIVE = /password|passwd|secret|token|hash|authorization|cookie/i;
 // ── Small formatting helpers ──────────────────────────────────────────────
 const pad = (n, w = 2) => String(n).padStart(w, '0');
 
-/** Java-style "yyyy-MM-dd HH:mm:ss,SSS" stamp. */
 function fmtStamp(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
          `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())},${pad(d.getMilliseconds(), 3)}`;
 }
 
-/** Never let a tab/CR/LF split the line, and cap runaway values. */
 const strip = (v) => {
   if (v == null) return '';
   return String(v).replace(/[\t\r\n]/g, ' ').slice(0, MAX_FIELD);
 };
 
-/** Flatten a string[] to "a, b" before stripping, then wrap for Java maps. */
 const headerList = (v) => strip(Array.isArray(v) ? v.join(', ') : v);
 
-/** Capitalize Node's lowercase headers to match Java Tomcat output (e.g. 'user-agent' -> 'User-Agent') */
 const titleCaseHeader = (s) => s.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-');
 
-/** Recursively redact sensitive keys (password, token, secret, ...). */
 function maskBody(obj, depth = 0) {
   if (obj == null) return obj;
   if (depth > 5) return strip(String(obj));
@@ -63,7 +43,6 @@ function maskBody(obj, depth = 0) {
   return strip(obj);
 }
 
-/** Plain header object (Node raw headers -> arrays of sanitized strings). */
 function buildHeaders(raw) {
   const out = {};
   for (const k of Object.keys(raw || {})) {
@@ -73,7 +52,6 @@ function buildHeaders(raw) {
   return out;
 }
 
-/** Java Map#toString style: "[K=[v1,v2],K2=[v]]". */
 function javaMap(headers) {
   const entries = Object.entries(headers || {});
   if (!entries.length) return '[]';
@@ -82,16 +60,12 @@ function javaMap(headers) {
     .join(',') + ']';
 }
 
-/**
- * Pure builder — everything is resolved by the caller so the exact same line
- * can be reproduced under test. Returns the joined, tab-separated string.
- */
 function buildJournalLine(ctx) {
   const {
     start, end, reqId, trace, thread, system, envName, hostname,
     companyId, accountId, sessionId, uri, method, contentType, contentLength,
     userAgent, cookie, reqHeaders, dto, queryParameters, queryString,
-    status, resSize, resHeaders, errorCode, messages,
+    status, resSize, resHeaders, resCookies, errorCode, messages,
   } = ctx;
 
   const reqHeadersJson = JSON.stringify(buildHeaders(reqHeaders));
@@ -104,6 +78,8 @@ function buildJournalLine(ctx) {
     uploadedFileInfoMap: {},
   });
   if (reqBodyJson.length > MAX_FIELD) reqBodyJson = reqBodyJson.slice(0, MAX_FIELD) + '…';
+
+  const resCookiesStr = Array.isArray(resCookies) ? resCookies.join(', ') : (resCookies || '');
 
   const fields = [
     fmtStamp(start),
@@ -131,7 +107,7 @@ function buildJournalLine(ctx) {
     reqBodyJson,
     strip(String(status)),
     strip(String(resSize ?? 0)),
-    '',
+    strip(resCookiesStr),
     javaMap(resHeaders),
     '',
     strip(String(errorCode ?? 0)),
@@ -143,8 +119,6 @@ function buildJournalLine(ctx) {
   return fields.join('\t');
 }
 
-
-/** Paths skipped by default (can be replaced with LOG_SKIP regex). */
 const DEFAULT_SKIP = /^\/(api\/health|api\/events|api\/admin\/logs)(\/|$)/;
 const SKIP_RE = (() => {
   const raw = process.env.LOG_SKIP;
@@ -159,10 +133,6 @@ const bufLen = (c) => {
   return Buffer.byteLength(String(c), 'utf8');
 };
 
-/**
- * Express middleware. Lazy-requires the logger so the pure builder can be
- * unit-tested without booting the DB transports.
- */
 function requestJournal(req, res, next) {
   if (process.env.LOG_JOURNAL === 'false') return next();
   if (shouldSkip(req.path)) return next();
@@ -179,7 +149,6 @@ function requestJournal(req, res, next) {
   const isJson = (req.headers['content-type'] || '').includes('application/json');
   const dto = isJson ? (req.body || {}) : {};
 
-  // Instrument the response so we can count bytes and sniff an error body.
   const origEnd = res.end;
   const origWrite = res.write;
   let outBytes = 0;
@@ -196,7 +165,6 @@ function requestJournal(req, res, next) {
   };
 
   function finalize() {
-    // Restore originals regardless of outcome.
     res.write = origWrite;
     res.end = origEnd;
 
@@ -216,9 +184,8 @@ function requestJournal(req, res, next) {
         try {
           const parsed = JSON.parse(bodyText);
           if (parsed && parsed.message) msgText = parsed.message;
-        } catch (_) { /* non-JSON error body */ }
+        } catch (_) { }
         if (msgText) {
-          // Emulate your java stack's message structure 
           errorCode = '200'; 
           messages = [`MessageId=HTTP_${status}, MessageTextSummary=${msgText}, MessageTextDetail=null, TargetProperties=[]`];
         }
@@ -230,7 +197,6 @@ function requestJournal(req, res, next) {
         thread: THREAD, system: SYSTEM, envName: ENV_NAME, hostname: HOSTNAME,
         companyId: COMPANY_ID,
         accountId: req.user ? `ACC${String(req.user.id).padStart(7, '0')}` : 'null',
-        // Looks for express-session OR custom x-session-id 
         sessionId: req.session ? req.session.id : (req.headers['x-session-id'] || ''),
         uri: (req.originalUrl || req.url || '').split('?')[0],
         method: req.method,
@@ -243,13 +209,14 @@ function requestJournal(req, res, next) {
         queryParameters: req.query || {},
         queryString: (req.originalUrl || req.url || '').split('?')[1] || '',
         status, resSize, resHeaders,
+        resCookies: res.getHeader('set-cookie'),
         errorCode,
         messages,
       });
 
       logger.info({ component: LOGGER, message: line });
     } catch (err) {
-      try { logger.error({ component: LOGGER, message: `journal error: ${err.message}` }); } catch (_) { /* never crash */ }
+      try { logger.error({ component: LOGGER, message: `journal error: ${err.message}` }); } catch (_) { }
     }
   }
 
